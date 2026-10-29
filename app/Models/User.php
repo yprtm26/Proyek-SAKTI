@@ -33,13 +33,41 @@ class User extends Authenticatable implements LdapAuthenticatable
     public function dashboardUrl()
     {
         return match ($this->role) {
-            'admin'     => '/admin/dashboard',
-            'mahasiswa' => '/mahasiswa/dashboard',
-            'kaprodi'   => '/kaprodi/dashboard',
-            'dekan'     => '/dekan/dashboard',
-            'dosen'     => '/dosen/dashboard',
-            default     => '/',
+            'admin'         => '/admin/dashboard',
+            'administrator' => '/administrator/dashboard',
+            'mahasiswa'     => '/mahasiswa/dashboard',
+            'kaprodi'       => '/kaprodi/dashboard',
+            'dekan'         => '/dekan/dashboard',
+            'dosen'         => '/dosen/dashboard',
+            default         => '/',
         };
+    }
+
+    /**
+     * Cek apakah user memiliki salah satu role yang diberikan.
+     */
+    public function hasRole(string ...$roles): bool
+    {
+        return in_array($this->role, $roles, true);
+    }
+
+    /**
+     * Cek apakah user memiliki salah satu role dari array.
+     *
+     * @param  array<int, string>  $roles
+     */
+    public function hasAnyRole(array $roles): bool
+    {
+        return in_array($this->role, $roles, true);
+    }
+
+    /**
+     * Role yang boleh melihat/mengelola seluruh surat pengajuan
+     * (bukan hanya miliknya sendiri).
+     */
+    public function isStaffSurat(): bool
+    {
+        return $this->hasAnyRole(['admin', 'kaprodi', 'dekan']);
     }
 
     protected $fillable = [

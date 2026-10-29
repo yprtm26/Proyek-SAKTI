@@ -81,48 +81,20 @@ Route::get('/sumberdaya', function () {
 Route::get('/sumberdaya/download/{id}', function ($id) {
     $file = SumberDaya::findOrFail($id);
 
+    // File dengan role tertentu hanya boleh diunduh oleh role tersebut.
+    if ($file->role !== null && $file->role !== Auth::user()->role) {
+        abort(403, 'ANDA TIDAK MEMILIKI AKSES KE FILE INI');
+    }
+
     return response()->download(
         storage_path('app/public/' . $file->file_path)
     );
 });
 
 // DISPOSISI
-Route::get('/disposisi/{id}', function($id) {
-        $disposisi = Disposisi::with(['surat','fromUser','toUser'])->findOrFail($id);
-
-        if ($disposisi->to_user_id !== Auth::id()) abort(403);
-
-        return view('disposisi.detail', compact('disposisi'));
-    });
-
-    Route::post('/disposisi/{id}/terima', function(Request $request, $id) {
-        $disposisi = Disposisi::findOrFail($id);
-
-        if ($disposisi->to_user_id !== Auth::id() || $disposisi->status !== 'pending') abort(403);
-
-        $disposisi->update([
-            'status' => 'diterima',
-            'komentar' => $request->komentar ?? $disposisi->komentar
-        ]);
-
-        // Opsional: update status surat jika ini step terakhir
-        // $disposisi->surat->update(['status' => 'disetujui_final']);
-
-        return redirect('/disposisi/'.$id)->with('success','Disposisi diterima');
-    });
-
-    Route::post('/disposisi/{id}/tolak', function(Request $request, $id) {
-        $disposisi = Disposisi::findOrFail($id);
-
-        if ($disposisi->to_user_id !== Auth::id() || $disposisi->status !== 'pending') abort(403);
-
-        $disposisi->update([
-            'status' => 'ditolak',
-            'komentar' => $request->komentar ?? $disposisi->komentar
-        ]);
-
-        return redirect('/disposisi/'.$id)->with('success','Disposisi ditolak');
-    });
+// Catatan: route detail disposisi didefinisikan sekali di bagian
+// "DISPOSISI — SEMUA ROLE" di bawah. Definisi duplikat di sini dihapus
+// agar aturan hak akses tidak saling menimpa (route terakhir yang menang).
 
 //----------------DOSEN---------------------
 Route::get('/dosen/surat/{id}/pdf', function ($id) {
@@ -132,11 +104,16 @@ Route::get('/dosen/surat/{id}/pdf', function ($id) {
                 ->where('status', 'disetujui_final')
                 ->firstOrFail();
 
-            if (
-                Auth::user()->role === 'dosen' &&
-                $surat->user_id !== Auth::id()
-            ) {
-                abort(403);
+            // Endpoint ini khusus surat milik dosen.
+            if ($surat->user->role !== 'dosen') {
+                abort(404);
+            }
+
+            $user = Auth::user();
+
+            // Pemilik surat atau staf (admin/kaprodi/dekan) boleh mengunduh.
+            if (! $user->isStaffSurat() && $surat->user_id !== $user->id) {
+                abort(403, 'ANDA TIDAK MEMILIKI AKSES KE SURAT INI');
             }
 
             $view = 'pdf.dosen.' . $surat->jenisSurat->slug;
@@ -165,12 +142,17 @@ Route::get('/mahasiswa/surat/{id}/pdf', function ($id) {
                 ->where('id', $id)
                 ->where('status', 'disetujui_final')
                 ->firstOrFail();
-            
-            if (
-                Auth::user()->role === 'mahasiswa' &&
-                $surat->user_id !== Auth::id()
-            ) {
-                abort(403);
+
+            // Endpoint ini khusus surat milik mahasiswa.
+            if ($surat->user->role !== 'mahasiswa') {
+                abort(404);
+            }
+
+            $user = Auth::user();
+
+            // Pemilik surat atau staf (admin/kaprodi/dekan) boleh mengunduh.
+            if (! $user->isStaffSurat() && $surat->user_id !== $user->id) {
+                abort(403, 'ANDA TIDAK MEMILIKI AKSES KE SURAT INI');
             }
 
             // KHUSUS MAGANG
@@ -1474,7 +1456,7 @@ Route::post('/notifikasi/read-all', function () {
         }
 
         return redirect('/admin/disposisi')->with('success', 'Disposisi telah selesai.');
-    });
+    })->middleware('role:admin');
 
     
     /*
