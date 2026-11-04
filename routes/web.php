@@ -64,6 +64,34 @@ Route::get('/surat/validasi/{token}', function ($token) {
 */
 Route::middleware('auth')->group(function () {
 
+/*
+|--------------------------------------------------------------------------
+| API PROFIL PENGUSUL (B-02)
+|--------------------------------------------------------------------------
+*/
+Route::get('/api/profil-pengusul', function () {
+    $user = Auth::user();
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'role' => $user->role,
+            'prodi' => $user->prodi,
+            'nama_prodi' => namaProdi($user->prodi),
+            'npm' => $user->npm,
+            'nidn' => $user->nidn,
+            'telephonenumber' => $user->telephonenumber,
+        ],
+    ]);
+})->name('api.profil-pengusul');
+
+Route::get('/api/me', function () {
+    return redirect()->route('api.profil-pengusul');
+});
+
 // MANUAL BOOK
 Route::get('/sumberdaya', function () {
 
@@ -109,6 +137,7 @@ Route::get('/dosen/surat/{id}/pdf', function ($id) {
                 abort(404);
             }
 
+            /** @var User $user */
             $user = Auth::user();
 
             // Pemilik surat atau staf (admin/kaprodi/dekan) boleh mengunduh.
@@ -148,6 +177,7 @@ Route::get('/mahasiswa/surat/{id}/pdf', function ($id) {
                 abort(404);
             }
 
+            /** @var User $user */
             $user = Auth::user();
 
             // Pemilik surat atau staf (admin/kaprodi/dekan) boleh mengunduh.
@@ -273,6 +303,23 @@ Route::post('/notifikasi/read-all', function () {
             }
 
             $validated = $request->validate($rules);
+
+            // B-02: Kunci identitas utama agar tidak bisa dimanipulasi dari request
+            if (isset($validated['nama_dosen'])) {
+                $validated['nama_dosen'] = Auth::user()->name;
+            }
+            if (isset($validated['nama_ditugaskan'])) {
+                $validated['nama_ditugaskan'] = Auth::user()->name;
+            }
+            if (isset($validated['no_nip']) && Auth::user()->nidn) {
+                $validated['no_nip'] = Auth::user()->nidn;
+            }
+            if (isset($validated['prodi'])) {
+                $validated['prodi'] = Auth::user()->prodi;
+            }
+            if (isset($validated['anggota']) && is_array($validated['anggota']) && count($validated['anggota']) > 0) {
+                $validated['anggota'][0]['nama'] = Auth::user()->name;
+            }
 
             $surat = SuratPengajuan::create([
                 'user_id' => Auth::id(),
@@ -435,10 +482,10 @@ Route::post('/notifikasi/read-all', function () {
                 ]);
 
                 $data = [
-                    'mahasiswa' => collect($request->mahasiswa)->map(function ($mhs) {
+                    'mahasiswa' => collect($request->mahasiswa)->map(function ($mhs, $idx) {
                         return [
-                            'nama' => $mhs['nama'],
-                            'npm'  => $mhs['npm'],
+                            'nama' => $idx === 0 ? Auth::user()->name : $mhs['nama'],
+                            'npm'  => $idx === 0 ? Auth::user()->npm : $mhs['npm'],
                             'mata_kuliah' => array_values($mhs['mata_kuliah']),
                         ];
                     })->toArray(),
@@ -496,8 +543,8 @@ Route::post('/notifikasi/read-all', function () {
                 $data = $validated;
                 $data['mahasiswa'] = collect($validated['mahasiswa'])->map(function ($m, $i) {
                     return [
-                        'npm' => $m['npm'],
-                        'nama' => $m['nama'],
+                        'npm' => $i === 0 ? Auth::user()->npm : $m['npm'],
+                        'nama' => $i === 0 ? Auth::user()->name : $m['nama'],
                         'prodi' => Auth::user()->prodi,
                         'semester' => $m['semester'],
                         'no_kontak' => $m['no_kontak'],
@@ -534,6 +581,16 @@ Route::post('/notifikasi/read-all', function () {
                 }
 
                 $validated = $request->validate($rules);
+
+                // B-02: Kunci pemohon pertama pada anggota tim
+                if (isset($validated['anggota_tim']) && is_array($validated['anggota_tim'])) {
+                    $firstApplicant = array_key_first($validated['anggota_tim']);
+                    if ($firstApplicant !== null) {
+                        $validated['anggota_tim'][$firstApplicant]['nama'] = Auth::user()->name;
+                        $validated['anggota_tim'][$firstApplicant]['npm'] = Auth::user()->npm;
+                    }
+                }
+
                 $data = $validated;
             }
 
@@ -708,17 +765,16 @@ Route::post('/notifikasi/read-all', function () {
         Route::get('/admin/dashboard', function (Request $request) {
 
             $roleTarget = 'mahasiswa';
-
             $query = SuratPengajuan::with(['user','jenisSurat'])
-                ->where('status', 'menunggu')
-                ->whereHas('user', fn ($q) => $q->where('role', $roleTarget));;
+                ->whereIn('status', ['menunggu', 'menunggu_admin_final'])
+                ->whereHas('user', fn ($query) => $query->where('role', $roleTarget));
 
             // SEARCH
             if ($request->q) {
                 $query->where(function ($q) use ($request) {
                     $q->whereHas('user', function ($u) use ($request) {
                         $u->where('name', 'like', '%'.$request->q.'%')
-                        ->orWhere('npm', 'like', '%'.$request->q.'%');
+                            ->orWhere('npm', 'like', '%'.$request->q.'%');
                     })
                     ->orWhereHas('jenisSurat', function ($j) use ($request) {
                         $j->where('nama', 'like', '%'.$request->q.'%');
@@ -745,10 +801,7 @@ Route::post('/notifikasi/read-all', function () {
             $suratPengajuan = $query->get();
 
             // dropdown
-            $jenisSurat = JenisSurat::all();
-
-            // JENIS SURAT KHUSUS MAHASISWA
-            $jenisSurat = JenisSurat::where('target_user', $roleTarget)->get();
+            $jenisSurat = JenisSurat::where('target_user', $roleTarget)->orderBy('nama')->get();
             return view('admin.dashboard', compact(
                 'suratPengajuan',
                 'jenisSurat'

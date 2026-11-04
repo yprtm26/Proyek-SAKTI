@@ -20,6 +20,22 @@
     <form method="POST" action="{{ url('/mahasiswa/surat/ajukan/'.$jenisSurat->id) }}">
         @csrf
 
+        {{-- DATA OTOMATIS --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">Nama Mahasiswa</label>
+                <input type="text" value="{{ auth()->user()->name }}" disabled class="w-full border rounded px-3 py-2 bg-gray-100">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">NPM</label>
+                <input type="text" value="{{ auth()->user()->npm }}" disabled class="w-full border rounded px-3 py-2 bg-gray-100">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">Program Studi</label>
+                <input type="text" value="{{ namaProdi(auth()->user()->prodi) }}" disabled class="w-full border rounded px-3 py-2 bg-gray-100">
+            </div>
+        </div>
+
         {{-- PERIHAL --}}
         <div class="mb-4">
             <label class="block text-sm font-medium">Perihal</label>

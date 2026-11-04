@@ -13,6 +13,25 @@
       class="space-y-6">
 @csrf
 
+{{-- DATA OTOMATIS PENGUSUL --}}
+<div class="bg-white p-6 rounded shadow">
+    <h3 class="font-semibold text-gray-700 mb-3">Identitas Pengusul</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+            <label class="block text-sm text-gray-600 mb-1">Nama Mahasiswa</label>
+            <input type="text" value="{{ auth()->user()->name }}" disabled class="w-full border rounded px-3 py-2 bg-gray-100">
+        </div>
+        <div>
+            <label class="block text-sm text-gray-600 mb-1">NPM</label>
+            <input type="text" value="{{ auth()->user()->npm }}" disabled class="w-full border rounded px-3 py-2 bg-gray-100">
+        </div>
+        <div>
+            <label class="block text-sm text-gray-600 mb-1">Program Studi</label>
+            <input type="text" value="{{ namaProdi(auth()->user()->prodi) }}" disabled class="w-full border rounded px-3 py-2 bg-gray-100">
+        </div>
+    </div>
+</div>
+
 <div class="bg-white p-6 rounded shadow">
 
     <div class="flex justify-between items-center mb-4">

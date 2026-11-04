@@ -106,9 +106,14 @@
             <td><strong>{{ $surat->user->name }}</strong></td>
         </tr>
         <tr>
-            <td>NPM</td>
+            <td>{{ $surat->user->role === 'mahasiswa' ? 'NPM' : ($surat->user->role === 'dosen' ? 'NIDN' : 'NIP/NIK') }}</td>
             <td>:</td>
-            <td>{{ $surat->user->npm }}</td>
+            <td>{{ $surat->user->npm ?? $surat->user->nidn ?? $surat->user->serial_number ?? '—' }}</td>
+        </tr>
+        <tr>
+            <td>Role Pengusul</td>
+            <td>:</td>
+            <td>{{ ucfirst($surat->user->role) }}</td>
         </tr>
         <tr>
             <td>Jenis Surat</td>
@@ -125,7 +130,7 @@
             <td>:</td>
             <td>
                 <span class="badge">
-                    {{ statusMahasiswa($surat->status) }}
+                    {{ $surat->status }}
                 </span>
             </td>
         </tr>
@@ -147,7 +152,7 @@
 
     <div class="actions">
         <div class="left-actions">
-            @if($surat->status === 'menunggu')
+            @if(in_array($surat->status, ['menunggu', 'menunggu_admin_final'], true))
 
                 <form method="POST" action="/admin/surat/{{ $surat->id }}/tolak"
                     onsubmit="return confirm('Yakin ingin MENOLAK surat ini?')"
@@ -168,6 +173,7 @@
             @endif
         </div>
         <div class="right-actions">
+            @if($surat->status === 'menunggu')
             <form method="POST" action="/admin/surat/{{ $surat->id }}/setujui"
                     onsubmit="return confirm('Yakin ingin MENYETUJUI surat ini?')"
                     style="display:inline;">
@@ -176,6 +182,7 @@
                         Setujui
                     </button>
                 </form>
+            @endif
             <a href="/admin/dashboard" class="btn-back">
                 Kembali
             </a>

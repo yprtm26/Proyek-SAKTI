@@ -4,7 +4,7 @@
 
 <div class="flex justify-between items-center mb-6">
     <h2 class="text-xl font-semibold text-gray-700">
-        Pengajuan Surat — MAHASISWA
+        Antrean Pengajuan Surat — Mahasiswa
     </h2>
 
     <div class="flex gap-3">
@@ -192,7 +192,7 @@
             <tr>
                 <th class="px-4 py-3">No</th>
                 <th class="px-4 py-3">Nama</th>
-                <th class="px-4 py-3">NPM</th>
+                <th class="px-4 py-3">NPM / NIDN / NIP</th>
                 <th class="px-4 py-3">Jenis Surat</th>
                 <th class="px-4 py-3">Tanggal</th>
                 <th class="px-4 py-3">Status</th>
@@ -205,14 +205,17 @@
             <tr class="hover:bg-gray-50">
                 <td class="px-4 py-3">{{ $i + 1 }}</td>
                 <td class="px-4 py-3">{{ $surat->user->name }}</td>
-                <td class="px-4 py-3">{{ $surat->user->npm }}</td>
+                <td class="px-4 py-3">
+                    {{ $surat->user->npm ?? $surat->user->nidn ?? $surat->user->serial_number ?? '—' }}
+                    <span class="block text-xs text-gray-500">{{ ucfirst($surat->user->role) }}</span>
+                </td>
                 <td class="px-4 py-3">{{ $surat->jenisSurat->nama }}</td>
                 <td class="px-4 py-3">
                     {{ $surat->created_at->format('d-m-Y H:i') }}
                 </td>
                 <td class="px-4 py-3">
                     <span class="px-2 py-1 rounded text-xs text-white bg-orange-500">
-                        {{ statusMahasiswa($surat->status) }}
+                        {{ $surat->status }}
                     </span>
                 </td>
                 <td class="px-4 py-3">
@@ -226,7 +229,7 @@
         @empty
             <tr>
                 <td colspan="7" class="px-4 py-6 text-center text-gray-500">
-                    Belum ada pengajuan surat
+                    Belum ada pengajuan surat dari mahasiswa.
                 </td>
             </tr>
         @endforelse

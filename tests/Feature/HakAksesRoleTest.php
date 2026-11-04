@@ -67,6 +67,90 @@ class HakAksesRoleTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_antrean_admin_memisahkan_pengajuan_mahasiswa_dan_dosen(): void
+    {
+        $admin = $this->makeUser('admin');
+        $mahasiswa = $this->makeUser('mahasiswa');
+        $dosen = $this->makeUser('dosen');
+
+        $jenisMahasiswa = JenisSurat::create([
+            'nama' => 'Surat Mahasiswa Uji',
+            'slug' => 'surat-mahasiswa-antrean-uji',
+            'target_user' => 'mahasiswa',
+            'fields' => [],
+            'alur' => ['admin'],
+            'aktif' => true,
+        ]);
+        $jenisDosen = JenisSurat::create([
+            'nama' => 'Surat Dosen Uji',
+            'slug' => 'surat-dosen-antrean-uji',
+            'target_user' => 'dosen',
+            'fields' => [],
+            'alur' => ['admin'],
+            'aktif' => true,
+        ]);
+
+        SuratPengajuan::create([
+            'user_id' => $mahasiswa->id,
+            'jenis_surat_id' => $jenisMahasiswa->id,
+            'data' => [],
+            'status' => 'menunggu',
+        ]);
+        SuratPengajuan::create([
+            'user_id' => $dosen->id,
+            'jenis_surat_id' => $jenisDosen->id,
+            'data' => [],
+            'status' => 'menunggu',
+        ]);
+        SuratPengajuan::create([
+            'user_id' => $mahasiswa->id,
+            'jenis_surat_id' => $jenisMahasiswa->id,
+            'data' => [],
+            'status' => 'disetujui_admin',
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/dashboard')
+            ->assertOk()
+            ->assertSee('Surat Mahasiswa Uji')
+            ->assertSee('Mahasiswa')
+            ->assertDontSee('Surat Dosen Uji')
+            ->assertDontSee('disetujui_admin');
+
+        $this->get('/admin/dashboard-dosen')
+            ->assertOk()
+            ->assertSee('Surat Dosen Uji')
+            ->assertDontSee('Surat Mahasiswa Uji');
+
+        $mahasiswaSubmission = SuratPengajuan::where('user_id', $mahasiswa->id)->firstOrFail();
+        $dosenSubmission = SuratPengajuan::where('user_id', $dosen->id)->firstOrFail();
+        $this->get('/admin/surat/'.$mahasiswaSubmission->id)->assertOk();
+        $this->get('/admin/surat/'.$dosenSubmission->id)->assertOk();
+    }
+
+    public function test_non_admin_ditolak_dari_detail_surat_admin(): void
+    {
+        $mahasiswa = $this->makeUser('mahasiswa');
+        $admin = $this->makeUser('admin');
+        $jenis = JenisSurat::create([
+            'nama' => 'Surat Uji Detail Admin',
+            'slug' => 'surat-uji-detail-admin',
+            'target_user' => 'mahasiswa',
+            'fields' => [],
+            'alur' => ['admin'],
+            'aktif' => true,
+        ]);
+        $surat = SuratPengajuan::create([
+            'user_id' => $mahasiswa->id,
+            'jenis_surat_id' => $jenis->id,
+            'data' => [],
+            'status' => 'menunggu',
+        ]);
+
+        $this->actingAs($mahasiswa)->get('/admin/surat/'.$surat->id)->assertForbidden();
+        $this->actingAs($admin)->get('/admin/surat/'.$surat->id)->assertOk();
+    }
+
     public function test_role_lain_tidak_dapat_mengakses_dashboard_dekan(): void
     {
         $this->actingAs($this->makeUser('admin'))

@@ -18,17 +18,37 @@
           class="bg-white shadow rounded-lg p-6 space-y-5">
         @csrf
 
-        {{-- NAMA DOSEN --}}
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Nama Dosen
-            </label>
-            <input type="text"
-                   name="nama_dosen"
-                   value="{{ old('nama_dosen', Auth::user()->name ?? '') }}"
-                   readonly
-                   class="w-full border rounded-lg px-3 py-2 bg-gray-100"
-                   required>
+        {{-- IDENTITAS DOSEN (TERKUNCI) --}}
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Nama Dosen
+                </label>
+                <input type="text"
+                       name="nama_dosen"
+                       value="{{ old('nama_dosen', Auth::user()->name ?? '') }}"
+                       readonly
+                       class="w-full border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed"
+                       required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    NIDN
+                </label>
+                <input type="text"
+                       value="{{ Auth::user()->nidn ?? '-' }}"
+                       readonly
+                       class="w-full border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Program Studi
+                </label>
+                <input type="text"
+                       value="{{ namaProdi(Auth::user()->prodi) }}"
+                       readonly
+                       class="w-full border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed">
+            </div>
         </div>
 
         {{-- INFORMASI KEGIATAN --}}

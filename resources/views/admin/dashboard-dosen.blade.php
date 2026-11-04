@@ -4,7 +4,7 @@
 
 <div class="flex justify-between items-center mb-4">
     <h2 class="text-xl font-semibold text-gray-700">
-        Pengajuan Surat — DOSEN
+        Antrean Pengajuan Surat — Dosen
     </h2>
 
     <a href="{{ url('/admin/surat') }}"
@@ -142,7 +142,7 @@
                              A.75.75 0 013 21V9.75z" />
                 </svg>
 
-                Surat Dosen
+                Surat Mahasiswa
             </a>
         </div>
 

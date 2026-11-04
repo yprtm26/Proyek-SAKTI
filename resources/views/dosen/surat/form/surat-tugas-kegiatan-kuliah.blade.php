@@ -70,17 +70,32 @@
                 Nama Dosen yang Ditugaskan
             </label>
             <input type="text" name="nama_ditugaskan"
-                   class="w-full border rounded-lg px-3 py-2"
+                   value="{{ old('nama_ditugaskan', Auth::user()->name ?? '') }}"
+                   readonly
+                   class="w-full border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed"
                    required>
         </div>
 
-        <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                NIP / NIDN
-            </label>
-            <input type="text" name="no_nip"
-                   class="w-full border rounded-lg px-3 py-2"
-                   required>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    NIP / NIDN
+                </label>
+                <input type="text" name="no_nip"
+                       value="{{ old('no_nip', Auth::user()->nidn ?? '') }}"
+                       readonly
+                       class="w-full border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed"
+                       required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Program Studi
+                </label>
+                <input type="text"
+                       value="{{ namaProdi(Auth::user()->prodi) }}"
+                       readonly
+                       class="w-full border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed">
+            </div>
         </div>
 
         <div>
