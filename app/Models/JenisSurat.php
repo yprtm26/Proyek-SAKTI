@@ -25,4 +25,9 @@ class JenisSurat extends Model
         'perlu_dekan',
         'ttd_qr_type',
     ];
+
+    public function suratPengajuan()
+    {
+        return $this->hasMany(SuratPengajuan::class, 'jenis_surat_id');
+    }
 }

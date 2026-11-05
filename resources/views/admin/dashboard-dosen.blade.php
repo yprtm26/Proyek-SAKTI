@@ -7,34 +7,60 @@
         Antrean Pengajuan Surat — Dosen
     </h2>
 
-    <a href="{{ url('/admin/surat') }}"
-    class="inline-flex items-center gap-2
-            px-4 py-2
-            bg-white border border-gray-300
-            text-gray-700 text-sm font-medium
-            rounded-full
-            hover:bg-gray-100 transition">
+    <div class="flex gap-3">
 
-        <svg xmlns="http://www.w3.org/2000/svg"
-            class="w-4 h-4 text-gray-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round"
-                d="M2.25 12.75V6.75a3 3 0 013-3h4.28
-                a1.5 1.5 0 011.06.44l1.72 1.72
-                a1.5 1.5 0 001.06.44H18.75
-                a3 3 0 013 3v3.75" />
-        <path stroke-linecap="round" stroke-linejoin="round"
-                d="M2.25 12.75A3.75 3.75 0 016 9h15.75
-                a3.75 3.75 0 013.75 3.75v4.5
-                A3.75 3.75 0 0118.75 21H6
-                a3.75 3.75 0 01-3.75-3.75v-4.5z" />
-        </svg>
+        <a href="{{ url('/admin/template-surat') }}"
+        class="inline-flex items-center gap-2
+                px-4 py-2
+                bg-white border border-gray-300
+                text-gray-700 text-sm font-medium
+                rounded-full
+                hover:bg-gray-100 transition">
 
-        Log Surat
-    </a>
+            <svg xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4 text-gray-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5A3.375 3.375 0 0010.125 2.25H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 9v6m3-3H9" />
+            </svg>
+
+            Kelola Template
+        </a>
+
+        <a href="{{ url('/admin/surat') }}"
+        class="inline-flex items-center gap-2
+                px-4 py-2
+                bg-white border border-gray-300
+                text-gray-700 text-sm font-medium
+                rounded-full
+                hover:bg-gray-100 transition">
+
+            <svg xmlns="http://www.w3.org/2000/svg"
+                class="w-4 h-4 text-gray-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M2.25 12.75V6.75a3 3 0 013-3h4.28
+                    a1.5 1.5 0 011.06.44l1.72 1.72
+                    a1.5 1.5 0 001.06.44H18.75
+                    a3 3 0 013 3v3.75" />
+            <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M2.25 12.75A3.75 3.75 0 016 9h15.75
+                    a3.75 3.75 0 013.75 3.75v4.5
+                    A3.75 3.75 0 0118.75 21H6
+                    a3.75 3.75 0 01-3.75-3.75v-4.5z" />
+            </svg>
+
+            Log Surat
+        </a>
+    </div>
 </div>
 
 {{-- ================= FILTER & SEARCH ================= --}}

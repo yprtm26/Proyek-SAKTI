@@ -855,6 +855,147 @@ Route::post('/notifikasi/read-all', function () {
 
         })->middleware(['auth','role:admin']);
 
+        // ================= TEMPLATE SURAT (B-15a) =================
+
+        // Aturan validasi dipakai bersama oleh store & update.
+        $validasiTemplate = function (Request $request) {
+            return $request->validate([
+                'nama'        => ['required', 'string', 'max:255'],
+                'kode'        => ['nullable', 'string', 'max:255'],
+                'target_user' => ['required', 'in:mahasiswa,dosen'],
+                'alur'        => ['required', 'array', 'min:1'],
+                'alur.*'      => ['in:admin,kaprodi,dekan'],
+                'fields'      => ['required', 'array', 'min:1'],
+                'fields.*'    => ['required', 'string', 'max:100', 'distinct', 'regex:/^[a-z0-9_]+$/'],
+                'aktif'       => ['nullable', 'boolean'],
+            ], [
+                'nama.required'        => 'Nama template wajib diisi.',
+                'target_user.required' => 'Target pengguna wajib dipilih.',
+                'alur.required'        => 'Pilih minimal satu alur persetujuan.',
+                'alur.*.in'            => 'Alur persetujuan tidak valid.',
+                'fields.required'      => 'Tambahkan minimal satu field dinamis.',
+                'fields.*.required'    => 'Nama field tidak boleh kosong.',
+                'fields.*.distinct'    => 'Nama field tidak boleh sama.',
+                'fields.*.regex'       => 'Nama field hanya boleh huruf kecil, angka, dan garis bawah (contoh: tahun_akademik).',
+            ]);
+        };
+
+        // DAFTAR TEMPLATE
+        Route::get('/admin/template-surat', function () {
+            $jenisSuratList = JenisSurat::orderBy('target_user')
+                ->orderBy('nama')
+                ->get();
+
+            return view('admin.template-surat.index', [
+                'title'          => 'Kelola Template Surat',
+                'jenisSuratList' => $jenisSuratList,
+            ]);
+        })->name('admin.template-surat.index');
+
+        // FORM BUAT
+        Route::get('/admin/template-surat/create', function () {
+            return view('admin.template-surat.create', [
+                'title' => 'Buat Template Surat',
+            ]);
+        })->name('admin.template-surat.create');
+
+        // SIMPAN
+        Route::post('/admin/template-surat', function (Request $request) use ($validasiTemplate) {
+
+            $validated = $validasiTemplate($request);
+
+            // Slug unik dari nama template
+            $slug = Str::slug($validated['nama']) ?: 'template-surat';
+            $slugAsli = $slug;
+            $urutan = 2;
+
+            while (JenisSurat::where('slug', $slug)->exists()) {
+                $slug = $slugAsli . '-' . $urutan++;
+            }
+
+            $alur = array_values($validated['alur']);
+
+            $jenisSurat = new JenisSurat();
+            $jenisSurat->fill([
+                'nama'        => $validated['nama'],
+                'slug'        => $slug,
+                'kode'        => $validated['kode'] ?? null,
+                'scope_nomor' => in_array('dekan', $alur)
+                    ? 'FTI'
+                    : (in_array('kaprodi', $alur) ? 'PRODI' : null),
+                'alur'        => $alur,
+                'ttd_qr_type' => 'admin',
+                'fields'      => array_values($validated['fields']),
+                'perlu_dekan' => in_array('dekan', $alur),
+                'aktif'       => $request->boolean('aktif'),
+            ]);
+
+            // target_user tidak ada di $fillable, jadi diisi langsung.
+            $jenisSurat->target_user = $validated['target_user'];
+            $jenisSurat->save();
+
+            return redirect()
+                ->route('admin.template-surat.index')
+                ->with('success', 'Template surat "' . $jenisSurat->nama . '" berhasil disimpan.');
+        })->name('admin.template-surat.store');
+
+        // FORM EDIT
+        Route::get('/admin/template-surat/{jenisSurat}/edit', function (JenisSurat $jenisSurat) {
+            return view('admin.template-surat.edit', [
+                'title'      => 'Edit Template Surat',
+                'jenisSurat' => $jenisSurat,
+            ]);
+        })->name('admin.template-surat.edit');
+
+        // PERBARUI
+        Route::put('/admin/template-surat/{jenisSurat}', function (Request $request, JenisSurat $jenisSurat) use ($validasiTemplate) {
+
+            $validated = $validasiTemplate($request);
+
+            $alur = array_values($validated['alur']);
+
+            // Slug sengaja tidak diubah agar data lama tetap konsisten.
+            $jenisSurat->fill([
+                'nama'        => $validated['nama'],
+                'kode'        => $validated['kode'] ?? null,
+                'scope_nomor' => in_array('dekan', $alur)
+                    ? 'FTI'
+                    : (in_array('kaprodi', $alur) ? 'PRODI' : null),
+                'alur'        => $alur,
+                'fields'      => array_values($validated['fields']),
+                'perlu_dekan' => in_array('dekan', $alur),
+                'aktif'       => $request->boolean('aktif'),
+            ]);
+
+            // target_user tidak ada di $fillable, jadi diisi langsung.
+            $jenisSurat->target_user = $validated['target_user'];
+            $jenisSurat->save();
+
+            return redirect()
+                ->route('admin.template-surat.index')
+                ->with('success', 'Template surat "' . $jenisSurat->nama . '" berhasil diperbarui.');
+        })->name('admin.template-surat.update');
+
+        // HAPUS
+        Route::delete('/admin/template-surat/{jenisSurat}', function (JenisSurat $jenisSurat) {
+
+            // Jangan hapus template yang sudah dipakai pengajuan.
+            // Relasi DB memakai cascadeOnDelete, jadi penghapusan akan ikut
+            // menghapus surat pengajuan milik mahasiswa/dosen.
+            if ($jenisSurat->suratPengajuan()->exists()) {
+                return redirect()
+                    ->route('admin.template-surat.index')
+                    ->with('error', 'Template "' . $jenisSurat->nama . '" tidak dapat dihapus karena sudah memiliki pengajuan surat. Nonaktifkan template ini sebagai gantinya.');
+            }
+
+            $nama = $jenisSurat->nama;
+            $jenisSurat->delete();
+
+            return redirect()
+                ->route('admin.template-surat.index')
+                ->with('success', 'Template surat "' . $nama . '" berhasil dihapus.');
+        })->name('admin.template-surat.destroy');
+
         Route::get('/admin/surat/{id}', function ($id) {
 
             // AUTO MARK NOTIF AS READ
