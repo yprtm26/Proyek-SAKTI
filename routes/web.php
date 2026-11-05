@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\Surat;
@@ -858,10 +859,17 @@ Route::post('/notifikasi/read-all', function () {
         // ================= TEMPLATE SURAT (B-15a) =================
 
         // Aturan validasi dipakai bersama oleh store & update.
-        $validasiTemplate = function (Request $request) {
+        // $excludeId diisi ID template saat update agar unique check mengecualikan dirinya sendiri.
+        $validasiTemplate = function (Request $request, ?int $excludeId = null) {
             return $request->validate([
-                'nama'        => ['required', 'string', 'max:255'],
-                'kode'        => ['nullable', 'string', 'max:255'],
+                'nama'        => [
+                    'required', 'string', 'max:255',
+                    Rule::unique('jenis_surat', 'nama')->ignore($excludeId),
+                ],
+                'kode'        => [
+                    'nullable', 'string', 'max:255',
+                    Rule::unique('jenis_surat', 'kode')->ignore($excludeId),
+                ],
                 'target_user' => ['required', 'in:mahasiswa,dosen'],
                 'alur'        => ['required', 'array', 'min:1'],
                 'alur.*'      => ['in:admin,kaprodi,dekan'],
@@ -870,11 +878,19 @@ Route::post('/notifikasi/read-all', function () {
                 'aktif'       => ['nullable', 'boolean'],
             ], [
                 'nama.required'        => 'Nama template wajib diisi.',
+                'nama.max'             => 'Nama template maksimal 255 karakter.',
+                'nama.unique'          => 'Nama template sudah digunakan, gunakan nama lain.',
+                'kode.max'             => 'Kode klasifikasi maksimal 255 karakter.',
+                'kode.unique'          => 'Kode klasifikasi sudah digunakan oleh template lain.',
                 'target_user.required' => 'Target pengguna wajib dipilih.',
+                'target_user.in'       => 'Target pengguna tidak valid.',
                 'alur.required'        => 'Pilih minimal satu alur persetujuan.',
+                'alur.min'             => 'Pilih minimal satu alur persetujuan.',
                 'alur.*.in'            => 'Alur persetujuan tidak valid.',
                 'fields.required'      => 'Tambahkan minimal satu field dinamis.',
+                'fields.min'           => 'Tambahkan minimal satu field dinamis.',
                 'fields.*.required'    => 'Nama field tidak boleh kosong.',
+                'fields.*.max'         => 'Nama field maksimal 100 karakter.',
                 'fields.*.distinct'    => 'Nama field tidak boleh sama.',
                 'fields.*.regex'       => 'Nama field hanya boleh huruf kecil, angka, dan garis bawah (contoh: tahun_akademik).',
             ]);
@@ -882,13 +898,12 @@ Route::post('/notifikasi/read-all', function () {
 
         // DAFTAR TEMPLATE
         Route::get('/admin/template-surat', function () {
-            $jenisSuratList = JenisSurat::orderBy('target_user')
-                ->orderBy('nama')
-                ->get();
+            $semua = JenisSurat::orderBy('nama')->get();
 
             return view('admin.template-surat.index', [
-                'title'          => 'Kelola Template Surat',
-                'jenisSuratList' => $jenisSuratList,
+                'title'              => 'Kelola Template Surat',
+                'templateMahasiswa'  => $semua->where('target_user', 'mahasiswa')->values(),
+                'templateDosen'      => $semua->where('target_user', 'dosen')->values(),
             ]);
         })->name('admin.template-surat.index');
 
@@ -920,6 +935,7 @@ Route::post('/notifikasi/read-all', function () {
                 'nama'        => $validated['nama'],
                 'slug'        => $slug,
                 'kode'        => $validated['kode'] ?? null,
+                'target_user' => $validated['target_user'],
                 'scope_nomor' => in_array('dekan', $alur)
                     ? 'FTI'
                     : (in_array('kaprodi', $alur) ? 'PRODI' : null),
@@ -930,8 +946,6 @@ Route::post('/notifikasi/read-all', function () {
                 'aktif'       => $request->boolean('aktif'),
             ]);
 
-            // target_user tidak ada di $fillable, jadi diisi langsung.
-            $jenisSurat->target_user = $validated['target_user'];
             $jenisSurat->save();
 
             return redirect()
@@ -950,7 +964,7 @@ Route::post('/notifikasi/read-all', function () {
         // PERBARUI
         Route::put('/admin/template-surat/{jenisSurat}', function (Request $request, JenisSurat $jenisSurat) use ($validasiTemplate) {
 
-            $validated = $validasiTemplate($request);
+            $validated = $validasiTemplate($request, (int) $jenisSurat->id);
 
             $alur = array_values($validated['alur']);
 
@@ -958,6 +972,7 @@ Route::post('/notifikasi/read-all', function () {
             $jenisSurat->fill([
                 'nama'        => $validated['nama'],
                 'kode'        => $validated['kode'] ?? null,
+                'target_user' => $validated['target_user'],
                 'scope_nomor' => in_array('dekan', $alur)
                     ? 'FTI'
                     : (in_array('kaprodi', $alur) ? 'PRODI' : null),
@@ -967,8 +982,6 @@ Route::post('/notifikasi/read-all', function () {
                 'aktif'       => $request->boolean('aktif'),
             ]);
 
-            // target_user tidak ada di $fillable, jadi diisi langsung.
-            $jenisSurat->target_user = $validated['target_user'];
             $jenisSurat->save();
 
             return redirect()
