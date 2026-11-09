@@ -1,63 +1,73 @@
-<<<<<<< HEAD
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Proyek SAKTI — Sistem Pengajuan Surat
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi pengajuan surat Fakultas Teknologi Informasi berbasis Laravel. Pengusul
+(mahasiswa/dosen) memilih jenis surat, mengisi form, lalu pengajuan diproses
+melalui alur Admin TU, Kaprodi, dan/atau Dekan.
 
-## About Laravel
+## Fitur Sprint 1
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Login memakai akun kampus (LDAP) dan data pengguna lokal.
+- Kontrol menu, halaman, dan endpoint berdasarkan role.
+- Pengajuan surat otomatis terikat pada akun pengusul (identitas read-only).
+- Antrean pemrosesan surat mahasiswa dan dosen oleh Admin TU.
+- Pengelolaan template surat oleh Admin TU (B-15a).
+- Pemilihan jenis surat dari daftar template aktif (B-06):
+  - Hanya template `aktif` yang tampil dan dapat dipakai.
+  - Form dirender otomatis dari `fields` template.
+  - Template nonaktif tidak bisa dibuka lewat URL langsung.
+  - Identitas pengusul dikunci di server, bukan hanya read-only di form.
+  - Endpoint daftar template aktif khusus pengusul: `GET /api/template-surat`
+    (mahasiswa/dosen; hanya template aktif sesuai role).
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Kebutuhan
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.2+ (diuji pada PHP 8.4)
+- Composer
+- Node.js & NPM
+- Database (konfigurasi pada `.env`; test memakai SQLite in-memory)
 
-## Learning Laravel
+## Instalasi
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+npm install
+npm run build
+php artisan serve
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Pengujian
 
-## Laravel Sponsors
+Seluruh test:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+php vendor/bin/phpunit --testdox
+```
 
-### Premium Partners
+Test khusus B-06:
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```bash
+php vendor/bin/phpunit tests/Feature/PemilihanTemplateAktifTest.php --testdox
+```
 
-## Contributing
+## Dokumentasi
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- `docs/hak-akses.md` — aturan hak akses per role
+- `docs/progres-sprint-1.md` — ringkasan progres Sprint 1
+- `docs/progres-b-01.md` — progres kontrol akses berbasis role
+- `docs/progres-b-02.md` — progres pengajuan terikat akun pengusul
+- `docs/progres-b-06.md` — progres pemilihan template surat aktif
 
-## Code of Conduct
+## Struktur Penting
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-=======
-# sistem-pengajuan-surat
->>>>>>> 38812d21a652ca180239a6ea25ad6b739f4f3028
+| Bagian | Lokasi |
+| --- | --- |
+| Route aplikasi | `routes/web.php` |
+| Model | `app/Models` |
+| Helper | `app/Helpers` |
+| Controller | `app/Http/Controllers` |
+| View | `resources/views` |
+| Migration & seeder | `database` |
+| Test | `tests/Feature`, `tests/Unit` |

@@ -1,6 +1,7 @@
 # Progres Kerja — Sprint 1 (Proyek SAKTI)
 
-**Terakhir Diperbarui:** 04 November 2026  
+**Terakhir Diperbarui:** 07 November 2026
+
 **Sprint Goal:** Menyelesaikan fungsionalitas inti pada aplikasi Sakti yang meliputi integrasi login LDAP kampus, sinkronisasi data ke database lokal, pembatasan kontrol menu berbasis role, serta pengelolaan alur pengajuan dan pembuatan template surat oleh pihak Tata Usaha.
 
 ---
@@ -13,7 +14,7 @@
 | **B-02** | Pengajuan surat terikat otomatis pada akun pengusul | **Selesai** | Auto-bind `user_id`, kunci identitas form mahasiswa & dosen, API me/profil. Test lolos. |
 | **B-05** | Akses pemrosesan semua jenis surat oleh Admin TU | **Selesai** | Antrean mahasiswa dan dosen dipisah; detail dilindungi role Admin TU. |
 | **B-15a** | Pembuatan dan penyimpanan template surat baru oleh Admin TU | **Belum** | Fitur buat template dinamis & field baru oleh Admin TU. |
-| **B-06** | Pemilihan jenis surat dari daftar template aktif | **Belum dikerjakan** | Diserahkan untuk dikerjakan ulang oleh anggota tim lain. |
+| **B-06** | Pemilihan jenis surat dari daftar template aktif | **Selesai** | Endpoint template aktif (khusus pengusul), form dinamis, proteksi template nonaktif, lock identitas server-side, dan test B-06 beres. |
 
 ---
 
@@ -84,8 +85,18 @@
 ---
 
 ### 5. [B-06] Pemilihan jenis surat dari daftar template aktif
-* **Status:** Belum dikerjakan; diserahkan kepada anggota tim lain untuk dikerjakan dari awal.
-* **Catatan:** Perubahan implementasi B-06 pada sesi ini sudah dihapus. Jangan menganggap fitur B-06 selesai berdasarkan progres sebelumnya.
+* **Status:** Selesai
+* **Checklist:**
+  - [x] 1. Buat endpoint daftar template aktif untuk halaman pengusul (Backend) (`GET /api/template-surat`, khusus mahasiswa/dosen)
+  - [x] 2. Bangun fitur pilih template & render kolom form dinamis (Front-end) (`resources/views/surat/form-dinamis.blade.php`, identitas dikunci di server)
+  - [x] 3. Uji pilih template aktif dan penyembunyian template nonaktif (Pengujian) (`tests/Feature/PemilihanTemplateAktifTest.php`)
+  - [x] 4. Review integrasi akhir Sprint 1, rapikan bug, & update README (Lainnya) (`README.md`, `docs/progres-b-06.md`, `docs/hak-akses.md`)
+* **Bukti Pengujian:**
+  ```text
+  php vendor/bin/phpunit tests/Feature/PemilihanTemplateAktifTest.php --testdox
+  OK (19 tests, 109 assertions)
+  ```
+* **Dokumentasi Terkait:** `docs/progres-b-06.md`
 
 ---
 

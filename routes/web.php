@@ -13,6 +13,7 @@ use App\Models\User;
 use Carbon\Carbon;
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\TemplateSuratController;
 use App\Models\JenisSurat;
 use App\Models\SuratPengajuan;
 use App\Models\SumberDaya;
@@ -92,6 +93,15 @@ Route::get('/api/profil-pengusul', function () {
 Route::get('/api/me', function () {
     return redirect()->route('api.profil-pengusul');
 });
+
+/*
+|--------------------------------------------------------------------------
+| API DAFTAR TEMPLATE SURAT AKTIF (B-06)
+|--------------------------------------------------------------------------
+*/
+Route::get('/api/template-surat', [TemplateSuratController::class, 'index'])
+    ->middleware('role:mahasiswa,dosen')
+    ->name('api.template-surat.index');
 
 // MANUAL BOOK
 Route::get('/sumberdaya', function () {
@@ -258,11 +268,9 @@ Route::post('/notifikasi/read-all', function () {
 
             $search = $request->query('search');
 
-            $jenisSurat = JenisSurat::where('aktif', true)
-                ->where('target_user', 'dosen') 
-                ->when($search, function ($q, $search) {
-                    $q->where('nama', 'like', '%' . $search . '%');
-                })
+            $jenisSurat = JenisSurat::aktif()
+                ->untukPengguna('dosen')
+                ->cari($search)
                 ->orderBy('nama')
                 ->get();
 
@@ -276,16 +284,25 @@ Route::post('/notifikasi/read-all', function () {
         */
         Route::get('/dosen/surat/ajukan/{id}', function ($id) {
 
-            $jenisSurat = JenisSurat::findOrFail($id);
+            // B-06: template nonaktif / milik role lain tidak boleh dipakai.
+            $jenisSurat = JenisSurat::aktif()
+                ->untukPengguna('dosen')
+                ->findOrFail($id);
 
-            // otomatis: mahasiswa/surat/form/{slug}.blade.php
+            // Form khusus tetap dipakai jika tersedia.
             $view = 'dosen.surat.form.' . $jenisSurat->slug;
 
-            if (!view()->exists($view)) {
-                abort(404, 'Form surat belum tersedia');
+            if (view()->exists($view)) {
+                return view($view, compact('jenisSurat'));
             }
 
-            return view($view, compact('jenisSurat'));
+            // Fallback: render form dari field dinamis template.
+            return view('surat.form-dinamis', [
+                'jenisSurat' => $jenisSurat,
+                'targetUser' => 'dosen',
+                'action' => url('/dosen/surat/ajukan/' . $jenisSurat->id),
+                'kembaliUrl' => url('/dosen/dashboard'),
+            ]);
         });
 
         /*
@@ -295,7 +312,10 @@ Route::post('/notifikasi/read-all', function () {
         */
         Route::post('/dosen/surat/ajukan/{id}', function (Request $request, $id) {
 
-            $jenisSurat = JenisSurat::findOrFail($id);
+            // B-06: tolak pengajuan ke template nonaktif / milik role lain.
+            $jenisSurat = JenisSurat::aktif()
+                ->untukPengguna('dosen')
+                ->findOrFail($id);
 
             // VALIDASI DINAMIS
             $rules = [];
@@ -312,7 +332,7 @@ Route::post('/notifikasi/read-all', function () {
             if (isset($validated['nama_ditugaskan'])) {
                 $validated['nama_ditugaskan'] = Auth::user()->name;
             }
-            if (isset($validated['no_nip']) && Auth::user()->nidn) {
+            if (array_key_exists('no_nip', $validated)) {
                 $validated['no_nip'] = Auth::user()->nidn;
             }
             if (isset($validated['prodi'])) {
@@ -439,11 +459,9 @@ Route::post('/notifikasi/read-all', function () {
 
             $search = $request->query('search');
 
-            $jenisSurat = JenisSurat::where('aktif', true)
-                ->where('target_user', 'mahasiswa')
-                ->when($search, function ($query, $search) {
-                    $query->where('nama', 'like', '%' . $search . '%');
-                })
+            $jenisSurat = JenisSurat::aktif()
+                ->untukPengguna('mahasiswa')
+                ->cari($search)
                 ->orderBy('nama')
                 ->get();
 
@@ -454,22 +472,34 @@ Route::post('/notifikasi/read-all', function () {
 
         Route::get('/mahasiswa/surat/ajukan/{id}', function ($id) {
 
-            $jenisSurat = JenisSurat::findOrFail($id);
+            // B-06: template nonaktif / milik role lain tidak boleh dipakai.
+            $jenisSurat = JenisSurat::aktif()
+                ->untukPengguna('mahasiswa')
+                ->findOrFail($id);
 
-            // otomatis: mahasiswa/surat/form/{slug}.blade.php
+            // Form khusus tetap dipakai jika tersedia.
             $view = 'mahasiswa.surat.form.' . $jenisSurat->slug;
 
-            if (!view()->exists($view)) {
-                abort(404, 'Form surat belum tersedia');
+            if (view()->exists($view)) {
+                return view($view, compact('jenisSurat'));
             }
 
-            return view($view, compact('jenisSurat'));
+            // Fallback: render form dari field dinamis template.
+            return view('surat.form-dinamis', [
+                'jenisSurat' => $jenisSurat,
+                'targetUser' => 'mahasiswa',
+                'action' => url('/mahasiswa/surat/ajukan/' . $jenisSurat->id),
+                'kembaliUrl' => url('/mahasiswa/dashboard'),
+            ]);
         });
 
         //SIMPAN PENGAJUAN SURAT
         Route::post('/mahasiswa/surat/ajukan/{id}', function (Request $request, $id) {
 
-            $jenisSurat = JenisSurat::findOrFail($id);
+            // B-06: tolak pengajuan ke template nonaktif / milik role lain.
+            $jenisSurat = JenisSurat::aktif()
+                ->untukPengguna('mahasiswa')
+                ->findOrFail($id);
 
             // SURAT REMEDIAL BAHASA INGGRIS
             if ($jenisSurat->slug === 'surat-pengantar-remedial-bahasa-inggris') {
@@ -582,6 +612,18 @@ Route::post('/notifikasi/read-all', function () {
                 }
 
                 $validated = $request->validate($rules);
+
+                // B-02/B-06: Identitas pengusul dikunci di server, bukan hanya
+                // read-only di tampilan, agar tidak bisa dimanipulasi dari request.
+                if (array_key_exists('nama', $validated)) {
+                    $validated['nama'] = Auth::user()->name;
+                }
+                if (array_key_exists('npm', $validated)) {
+                    $validated['npm'] = Auth::user()->npm;
+                }
+                if (array_key_exists('prodi', $validated)) {
+                    $validated['prodi'] = Auth::user()->prodi;
+                }
 
                 // B-02: Kunci pemohon pertama pada anggota tim
                 if (isset($validated['anggota_tim']) && is_array($validated['anggota_tim'])) {

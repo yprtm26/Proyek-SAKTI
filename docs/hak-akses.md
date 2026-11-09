@@ -98,6 +98,15 @@ boleh mengakses menu dan endpoint apa pada aplikasi SAKTI.
 > grup `auth` karena dipakai juga oleh staf. Otorisasinya dilakukan di dalam
 > handler: **pemilik surat** atau **admin/kaprodi/dekan**.
 
+### 4.2.1 Pengusul — Mahasiswa & Dosen (`role:mahasiswa,dosen`)
+
+| Method | Endpoint | Aturan tambahan |
+|--------|----------|-----------------|
+| GET | `/api/template-surat` | Hanya template `aktif`; pengusul hanya boleh melihat template milik role-nya sendiri. Filter `target_user` ke role lain ditolak **403**. Filter `target_user` selain `mahasiswa`/`dosen` ditolak **422**. |
+
+> Endpoint ini khusus halaman pengusul. Staf yang perlu melihat seluruh template
+> memakai halaman `/admin/template-surat`.
+
 ### 4.3 Mahasiswa (`role:mahasiswa`)
 
 | Method | Endpoint |
