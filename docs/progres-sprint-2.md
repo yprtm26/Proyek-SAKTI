@@ -32,23 +32,21 @@
 * **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
   - [x] 1. Skema database counter login gagal dan timestamp `locked_until` (Backend) (`database/migrations/2026_11_14_143031_add_login_lockout_to_users_table.php`)
-  - [x] 2. Logika rate-limiting dan progressive lock account per kelipatan 3x gagal (Backend) (`app/Http/Controllers/AuthController.php`)
+  - [x] 2. Penguncian akun selama 1 menit setelah 5x gagal (Backend) (`app/Http/Controllers/AuthController.php`)
   - [x] 3. UI pesan peringatan kunci akun dengan countdown timer teraksesibel (Front-end) (`resources/views/auth/login.blade.php`)
   - [x] 4. Uji coba skenario gagal, countdown, dan proteksi login saat terkunci (Pengujian) (`tests/Feature/LoginLockoutTest.php`)
 * **Aturan Lockout:**
-  - Gagal 1x–2x: Menampilkan peringatan sisa percobaan sebelum kunci.
-  - Gagal 3x: Akun dikunci 1 menit (60 detik).
-  - Gagal 6x: Akun dikunci 2 menit (120 detik).
-  - Gagal 9x: Akun dikunci 3 menit (180 detik), dst ($N$ menit untuk $3N$ kegagalan).
-  - Counter tidak di-reset saat masa kunci habis (akumulatif); counter kembali ke 0 hanya setelah login berhasil.
+  - Gagal 1x–4x: Menampilkan sisa percobaan sebelum kunci.
+  - Gagal ke-5: Akun dikunci 1 menit (60 detik).
+  - Percobaan selama masa kunci ditolak, tanpa menambah counter.
+  - Counter di-reset setelah login berhasil.
 * **Bukti Pengujian:**
   ```text
   php artisan test --filter=LoginLockoutTest
   PASS  Tests\Feature\LoginLockoutTest
-  ✓ gagal 1x 2x counter naik tapi belum kunci
-  ✓ gagal 3x kunci 1 menit
-  ✓ gagal 6x kunci 2 menit
-  ✓ gagal 9x kunci 3 menit
+   ✓ gagal 1x sampai 4x counter naik tapi belum dikunci
+   ✓ gagal 5x kunci 1 menit
+   ✓ percobaan ke-6 ditolak selama masa kunci
   ✓ password benar ditolak saat terkunci
   ✓ login berhasil setelah kunci habis dan counter reset
   ✓ sisa percobaan tampil saat belum kunci

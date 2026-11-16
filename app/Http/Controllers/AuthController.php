@@ -10,8 +10,8 @@ use App\Models\User;
 
 class AuthController extends Controller
 {
-    const LOCKOUT_THRESHOLD = 3;   // Setiap kelipatan 3x gagal → kunci
-    const LOCKOUT_BASE_MINUTES = 1; // Durasi kunci bertambah 1 menit per kelipatan
+    const LOCKOUT_THRESHOLD = 5;
+    const LOCKOUT_MINUTES = 1;
     // // tampilkan form login
     // public function showLogin()
     // {
@@ -80,7 +80,6 @@ class AuthController extends Controller
             if ($user->locked_until->isFuture()) {
                 $secondsRemaining = (int) Carbon::now()->diffInSeconds($user->locked_until, false);
                 if ($secondsRemaining > 0) {
-                    $lockLevel = intdiv($user->failed_login_attempts, self::LOCKOUT_THRESHOLD);
                     $minutes = ceil($secondsRemaining / 60);
                     return back()->withInput($request->only('username'))->withErrors([
                         'username' => "Akun Anda dikunci sementara karena {$user->failed_login_attempts} kali salah password. Silakan coba lagi dalam {$minutes} menit.",
@@ -144,10 +143,8 @@ class AuthController extends Controller
         if ($user) {
             $attempts = $user->failed_login_attempts + 1;
 
-            // Setiap kelipatan 3x gagal (3, 6, 9, ...): kunci akun bertambah 1 menit per level
-            if ($attempts % self::LOCKOUT_THRESHOLD === 0) {
-                $multiplier = intdiv($attempts, self::LOCKOUT_THRESHOLD);
-                $lockMinutes = $multiplier * self::LOCKOUT_BASE_MINUTES;
+            if ($attempts >= self::LOCKOUT_THRESHOLD) {
+                $lockMinutes = self::LOCKOUT_MINUTES;
                 $lockedUntil = Carbon::now()->addMinutes($lockMinutes);
 
                 $user->update([
@@ -162,7 +159,7 @@ class AuthController extends Controller
             }
 
             $user->update(['failed_login_attempts' => $attempts]);
-            $sisaMenujuKunci = self::LOCKOUT_THRESHOLD - ($attempts % self::LOCKOUT_THRESHOLD);
+            $sisaMenujuKunci = self::LOCKOUT_THRESHOLD - $attempts;
 
             return back()->withInput($request->only('username'))->withErrors([
                 'username' => "Username atau password salah. Sisa percobaan sebelum akun dikunci: {$sisaMenujuKunci} kali.",

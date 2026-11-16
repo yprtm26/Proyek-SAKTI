@@ -22,11 +22,6 @@
         .animate-fadeIn {
             animation: fadeIn 0.8s ease-in-out;
         }
-        /* Hapus tombol reveal password bawaan browser Edge/Chrome Windows */
-        input[type="password"]::-ms-reveal,
-        input[type="password"]::-ms-clear {
-            display: none;
-        }
     </style>
 </head>
 
