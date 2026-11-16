@@ -33,69 +33,49 @@ class LoginLockoutTest extends TestCase
         return $response;
     }
 
-    public function test_gagal_1x_2x_counter_naik_tapi_belum_kunci(): void
+    public function test_gagal_1x_sampai_4x_counter_naik_tapi_belum_dikunci(): void
     {
         $user = $this->createTestUser();
 
-        $this->failLogin(2);
+        $this->failLogin(4);
 
         $user->refresh();
-        $this->assertEquals(2, $user->failed_login_attempts);
+        $this->assertEquals(4, $user->failed_login_attempts);
         $this->assertNull($user->locked_until);
     }
 
-    public function test_gagal_3x_kunci_1_menit(): void
+    public function test_gagal_5x_kunci_1_menit(): void
     {
         $user = $this->createTestUser();
 
-        $response = $this->failLogin(3);
+        $response = $this->failLogin(5);
 
         $user->refresh();
-        $this->assertEquals(3, $user->failed_login_attempts);
+        $this->assertEquals(5, $user->failed_login_attempts);
         $this->assertNotNull($user->locked_until);
         $this->assertTrue($user->locked_until->isFuture());
         $response->assertSessionHas('lockout_seconds', 60);
     }
 
-    public function test_gagal_6x_kunci_2_menit(): void
+    public function test_percobaan_ke_6_ditolak_selama_masa_kunci(): void
     {
         $user = $this->createTestUser();
 
-        // Gagal 3x → kunci 1 menit
-        $this->failLogin(3);
-
-        // Lewati kunci pertama
+        $this->failLogin(5);
         $user->refresh();
-        $user->update(['locked_until' => Carbon::now()->subSecond()]);
-
-        // Gagal 3x lagi (total 6x) → kunci 2 menit
-        $response = $this->failLogin(3);
+        $response = $this->post('/login', ['username' => 'testuser', 'password' => 'salah']);
 
         $user->refresh();
-        $this->assertEquals(6, $user->failed_login_attempts);
+        $this->assertEquals(5, $user->failed_login_attempts);
         $this->assertNotNull($user->locked_until);
-        $response->assertSessionHas('lockout_seconds', 120);
-    }
-
-    public function test_gagal_9x_kunci_3_menit(): void
-    {
-        $user = $this->createTestUser();
-        // Set counter langsung ke 8 (sudah lewati 2 kunci sebelumnya)
-        $user->update(['failed_login_attempts' => 8, 'locked_until' => null]);
-
-        $response = $this->failLogin(1); // jadi total 9
-
-        $user->refresh();
-        $this->assertEquals(9, $user->failed_login_attempts);
-        $this->assertNotNull($user->locked_until);
-        $response->assertSessionHas('lockout_seconds', 180);
+        $response->assertSessionHas('lockout_seconds');
     }
 
     public function test_password_benar_ditolak_saat_terkunci(): void
     {
         $user = $this->createTestUser();
         $user->update([
-            'failed_login_attempts' => 3,
+            'failed_login_attempts' => 5,
             'locked_until' => Carbon::now()->addMinutes(1),
         ]);
 
@@ -113,7 +93,7 @@ class LoginLockoutTest extends TestCase
     {
         $user = $this->createTestUser();
         $user->update([
-            'failed_login_attempts' => 6,
+            'failed_login_attempts' => 5,
             'locked_until' => Carbon::now()->subSecond(),
         ]);
 
@@ -134,10 +114,10 @@ class LoginLockoutTest extends TestCase
     {
         $user = $this->createTestUser();
 
-        $response = $this->failLogin(1);
+        $response = $this->failLogin(3);
 
         $error = $response->getSession()->get('errors')->first('username');
-        $this->assertStringContainsString('2 kali', $error); // 3-1 = sisa 2
+        $this->assertStringContainsString('2 kali', $error); // 5-3 = sisa 2
     }
 
     public function test_username_tidak_dikenal_pesan_generik(): void

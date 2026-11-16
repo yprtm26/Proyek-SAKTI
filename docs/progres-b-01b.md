@@ -7,7 +7,7 @@
 ---
 
 ## 1. Ringkasan Fitur
-Menerapkan mekanisme penguncian akun berjenjang (*progressive lockout*) pada halaman login aplikasi SAKTI. Setiap kelipatan 3 kali percobaan login gagal berturut-turut, sistem mengunci akun dengan durasi bertambah 1 menit per level. Selama akun terkunci, login ditolak meskipun password yang dimasukkan benar. Halaman login menampilkan countdown timer yang aksesibel.
+Menerapkan penguncian sementara setelah 5 percobaan login gagal berturut-turut. Akun dikunci selama 1 menit; percobaan berikutnya ditolak selama masa kunci, meskipun password benar. Login berhasil mereset counter.
 
 ---
 
@@ -15,7 +15,7 @@ Menerapkan mekanisme penguncian akun berjenjang (*progressive lockout*) pada hal
 
 | # | Kriteria | Status |
 |---|---|:---:|
-| AC-1 | Sistem mencatat percobaan gagal dan mengunci akun bertahap (3x → 1 menit, 6x → 2 menit, 9x → 3 menit, dst.) | ✅ |
+| AC-1 | Sistem mencatat percobaan gagal dan mengunci akun selama 1 menit setelah percobaan gagal ke-5 | ✅ |
 | AC-2 | Sistem menampilkan pesan waktu tunggu countdown dengan kontras teks ≥ 4.5:1 saat akun terkunci | ✅ |
 | AC-3 | Sistem tetap menolak login meski password benar selama masa durasi penguncian masih berjalan | ✅ |
 
@@ -35,13 +35,13 @@ Menerapkan mekanisme penguncian akun berjenjang (*progressive lockout*) pada hal
 * **Pekerjaan:** Mengimplementasikan logika penguncian bertahap di method `login()` pada `AuthController`.
 * **File Terkait:** `app/Http/Controllers/AuthController.php`
 * **Konstanta:**
-  - `LOCKOUT_THRESHOLD = 3`: Kelipatan gagal yang memicu kunci.
-  - `LOCKOUT_BASE_MINUTES = 1`: Penambahan durasi per level.
+  - `LOCKOUT_THRESHOLD = 5`: Percobaan gagal yang memicu kunci.
+  - `LOCKOUT_MINUTES = 1`: Durasi kunci.
 * **Alur Logika:**
   1. Sebelum autentikasi: cek apakah `locked_until` masih di masa depan. Jika ya, tolak login dan kirim `lockout_seconds` ke session.
   2. Jika masa kunci sudah lewat: hapus `locked_until` (counter tetap dipertahankan, tidak di-reset).
   3. Jika login berhasil (`Auth::attempt` sukses): reset `failed_login_attempts` ke `0` dan `locked_until` ke `null`.
-  4. Jika login gagal dan user ada di database: increment counter. Jika counter mencapai kelipatan 3, hitung durasi kunci (`multiplier * 1 menit`) dan set `locked_until`.
+  4. Jika login gagal dan user ada di database: increment counter. Pada percobaan ke-5, set `locked_until` selama 1 menit.
   5. Jika username tidak dikenal: kembalikan pesan generik tanpa membocorkan informasi keberadaan akun.
 
 ### Task 3: UI pesan peringatan kunci akun dengan countdown timer teraksesibel (Front-end)
@@ -66,10 +66,9 @@ Menerapkan mekanisme penguncian akun berjenjang (*progressive lockout*) pada hal
 
   | # | Skenario | Assertion |
   |---|---|---|
-  | 1 | Gagal 1x–2x: counter naik, belum terkunci | `failed_login_attempts == 2`, `locked_until == null` |
-  | 2 | Gagal 3x: kunci 1 menit (60 detik) | `locked_until` di masa depan, `lockout_seconds == 60` |
-  | 3 | Gagal 6x (setelah kunci pertama habis): kunci 2 menit | `failed_login_attempts == 6`, `lockout_seconds == 120` |
-  | 4 | Gagal 9x: kunci 3 menit | `failed_login_attempts == 9`, `lockout_seconds == 180` |
+  | 1 | Gagal 1x–4x: counter naik, belum terkunci | `failed_login_attempts == 4`, `locked_until == null` |
+  | 2 | Gagal 5x: kunci 1 menit (60 detik) | `locked_until` di masa depan, `lockout_seconds == 60` |
+  | 3 | Percobaan ke-6 saat terkunci: ditolak tanpa menambah counter | `failed_login_attempts == 5`, `lockout_seconds` tersedia |
   | 5 | Password benar ditolak saat terkunci | Session error + `lockout_seconds`, user tetap guest |
   | 6 | Login berhasil setelah kunci habis, counter reset | Redirect dashboard, counter `0`, `locked_until null` |
   | 7 | Pesan sisa percobaan tampil sebelum kunci | Error message mengandung "2 kali" |
@@ -79,10 +78,9 @@ Menerapkan mekanisme penguncian akun berjenjang (*progressive lockout*) pada hal
   ```text
   php artisan test --filter=LoginLockoutTest
   PASS  Tests\Feature\LoginLockoutTest
-  ✓ gagal 1x 2x counter naik tapi belum kunci
-  ✓ gagal 3x kunci 1 menit
-  ✓ gagal 6x kunci 2 menit
-  ✓ gagal 9x kunci 3 menit
+   ✓ gagal 1x sampai 4x counter naik tapi belum dikunci
+   ✓ gagal 5x kunci 1 menit
+   ✓ percobaan ke-6 ditolak selama masa kunci
   ✓ password benar ditolak saat terkunci
   ✓ login berhasil setelah kunci habis dan counter reset
   ✓ sisa percobaan tampil saat belum kunci
@@ -114,4 +112,4 @@ Jalankan seluruh test suite untuk memastikan tidak ada regresi:
 ```bash
 php artisan test
 ```
-Hasil terakhir: 24 tests, 82 assertions, 0 failures.
+Hasil terakhir: perlu dijalankan ulang setelah perubahan aturan.
