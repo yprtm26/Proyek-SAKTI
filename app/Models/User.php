@@ -81,7 +81,9 @@ class User extends Authenticatable implements LdapAuthenticatable
         'npm',
         'nidn',
         'serial_number',
-        'telephonenumber'
+        'telephonenumber',
+        'failed_login_attempts',
+        'locked_until',
     ];
 
     /**
@@ -103,6 +105,7 @@ class User extends Authenticatable implements LdapAuthenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'locked_until' => 'datetime',
             'password' => 'hashed',
         ];
     }

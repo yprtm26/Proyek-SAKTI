@@ -267,14 +267,18 @@ Route::post('/notifikasi/read-all', function () {
         Route::get('/dosen/dashboard', function (Request $request) {
 
             $search = $request->query('search');
+            $indeksKegiatan = $request->query('indeks_kegiatan');
 
             $jenisSurat = JenisSurat::aktif()
                 ->untukPengguna('dosen')
+                ->when($indeksKegiatan, function ($q, $indeksKegiatan) {
+                    $q->where('indeks_kegiatan', $indeksKegiatan);
+                })
                 ->cari($search)
                 ->orderBy('nama')
                 ->get();
 
-            return view('dosen.dashboard', compact('jenisSurat', 'search'));
+            return view('dosen.dashboard', compact('jenisSurat', 'search', 'indeksKegiatan'));
         });
 
         /*
@@ -458,7 +462,6 @@ Route::post('/notifikasi/read-all', function () {
         Route::get('/mahasiswa/dashboard', function (Request $request) {
 
             $search = $request->query('search');
-
             $jenisSurat = JenisSurat::aktif()
                 ->untukPengguna('mahasiswa')
                 ->cari($search)

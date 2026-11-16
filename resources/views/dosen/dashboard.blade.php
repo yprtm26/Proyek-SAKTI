@@ -20,6 +20,9 @@
 
             {{-- SEARCH --}}
             <form id="searchForm" method="GET" action="{{ url('/dosen/dashboard') }}" class="relative">
+                @if($indeksKegiatan)
+                    <input type="hidden" name="indeks_kegiatan" value="{{ $indeksKegiatan }}">
+                @endif
                 <input
                     type="text"
                     id="searchInput"
@@ -101,6 +104,35 @@
         </div>
     </div>
 
+    {{-- FILTER INDEKS KEGIATAN (US-07) --}}
+    <form method="GET" action="{{ url('/dosen/dashboard') }}" class="mb-6 flex flex-col sm:flex-row sm:items-end gap-3">
+        @if($search)
+            <input type="hidden" name="search" value="{{ $search }}">
+        @endif
+        <div class="w-full sm:max-w-sm">
+            <label for="indeks_kegiatan" class="block text-sm font-semibold text-gray-700 mb-1">
+                Filter surat tugas berdasarkan indeks kegiatan
+            </label>
+            <select id="indeks_kegiatan" name="indeks_kegiatan"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-800 cursor-pointer
+                           focus:outline-none focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2">
+                <option value="">Semua formulir</option>
+                <option value="pendidikan" @selected($indeksKegiatan === 'pendidikan')>Pendidikan</option>
+                <option value="penelitian" @selected($indeksKegiatan === 'penelitian')>Penelitian</option>
+                <option value="pengabdian" @selected($indeksKegiatan === 'pengabdian')>Pengabdian</option>
+                <option value="kemahasiswaan" @selected($indeksKegiatan === 'kemahasiswaan')>Kemahasiswaan</option>
+            </select>
+        </div>
+        <button type="submit" class="min-h-11 px-4 py-2 rounded-lg bg-green-700 text-white font-semibold hover:bg-green-800 active:bg-green-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-700 focus-visible:ring-offset-2">
+            Terapkan filter
+        </button>
+        @if($indeksKegiatan)
+            <a href="{{ url('/dosen/dashboard') }}{{ $search ? '?search='.urlencode($search) : '' }}" class="min-h-11 inline-flex items-center px-3 py-2 text-green-800 font-medium underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-700">
+                Hapus filter
+            </a>
+        @endif
+    </form>
+
     {{-- CARD SURAT --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 items-stretch">
 
@@ -144,8 +176,12 @@
 
         {{-- JIKA KOSONG --}}
         @if($jenisSurat->isEmpty())
-            <div class="col-span-full text-center text-gray-500 mt-6">
-                Jenis surat tidak ditemukan
+            <div class="col-span-full text-center text-gray-700 mt-6" role="status">
+                @if($indeksKegiatan)
+                    Tidak ada formulir aktif pada kategori {{ ucfirst($indeksKegiatan) }}.
+                @else
+                    Jenis surat tidak ditemukan.
+                @endif
             </div>
         @endif
 

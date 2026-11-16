@@ -1,7 +1,6 @@
 # Progres Kerja — Sprint 1 (Proyek SAKTI)
 
 **Terakhir Diperbarui:** 07 November 2026
-
 **Sprint Goal:** Menyelesaikan fungsionalitas inti pada aplikasi Sakti yang meliputi integrasi login LDAP kampus, sinkronisasi data ke database lokal, pembatasan kontrol menu berbasis role, serta pengelolaan alur pengajuan dan pembuatan template surat oleh pihak Tata Usaha.
 
 ---
@@ -10,10 +9,10 @@
 
 | ID Task | Nama Task | Status | Keterangan |
 | :--- | :--- | :---: | :--- |
-| **B-01 A** | Kontrol tampilan menu dan data sesuai role pengguna | **Selesai** | Middleware role, penanganan 403, navigasi per role beres. Test lolos. |
-| **B-02** | Pengajuan surat terikat otomatis pada akun pengusul | **Selesai** | Auto-bind `user_id`, kunci identitas form mahasiswa & dosen, API me/profil. Test lolos. |
-| **B-05** | Akses pemrosesan semua jenis surat oleh Admin TU | **Selesai** | Antrean mahasiswa dan dosen dipisah; detail dilindungi role Admin TU. |
-| **B-15a** | Pembuatan dan penyimpanan template surat baru oleh Admin TU | **Belum** | Fitur buat template dinamis & field baru oleh Admin TU. |
+| **B-01 A** | Kontrol tampilan menu dan data sesuai role pengguna | **Selesai** | Middleware role, penanganan 403, navigasi per role beres. Test lolos (7 tests, 22 assertions). |
+| **B-02** | Pengajuan surat terikat otomatis pada akun pengusul | **Selesai** | Auto-bind `user_id`, kunci identitas form mahasiswa & dosen, API me/profil. Test lolos (5 tests, 20 assertions). |
+| **B-05** | Akses pemrosesan semua jenis surat oleh Admin TU | **Selesai** | Antrean mahasiswa dan dosen dipisah; detail dilindungi role Admin TU. Test lolos (9 tests, 32 assertions). |
+| **B-15a** | Pembuatan dan penyimpanan template surat baru oleh Admin TU | **Sedang Berjalan** | Development tuntas 100% (Subtask 1-4 selesai + revisi tab kategori). Sisa QA/Testing (Subtask 5). |
 | **B-06** | Pemilihan jenis surat dari daftar template aktif | **Selesai** | Endpoint template aktif (khusus pengusul), form dinamis, proteksi template nonaktif, lock identitas server-side, dan test B-06 beres. |
 
 ---
@@ -22,6 +21,7 @@
 
 ### 1. [B-01 A] Kontrol tampilan menu dan data sesuai role pengguna
 * **Status:** Selesai (Siap dipindahkan ke Done)
+* **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
   - [x] 1. Susun aturan hak akses menu dan endpoint untuk tiap role (Backend)
   - [x] 2. Buat middleware pengecekan role pengguna di sisi server (Backend) (`app/Http/Middleware/RoleMiddleware.php`)
@@ -34,11 +34,13 @@
   php vendor/bin/phpunit tests/Feature/HakAksesRoleTest.php
   OK (7 tests, 22 assertions)
   ```
+* **Dokumentasi Terkait:** `docs/progres-b-01.md`
 
 ---
 
 ### 2. [B-02] Pengajuan surat terikat otomatis pada akun pengusul
 * **Status:** Selesai (Siap dipindahkan ke Done)
+* **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
   - [x] 1. Desain tampilan kolom identitas otomatis pada form surat (UI/UX) *(Dilewati atas arahan client)*
   - [x] 2. Buat API pengambil data profil pengusul yang sedang login (Backend) (`/api/profil-pengusul`, `/api/me`)
@@ -55,37 +57,38 @@
 ---
 
 ### 3. [B-05] Akses pemrosesan semua jenis surat oleh Admin TU
-* **Status:** Selesai untuk role yang tersedia; Tendik merujuk Admin TU sesuai klarifikasi pengguna
+* **Status:** Selesai (100% untuk antrean Mahasiswa dan Dosen)
+* **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
-  - [x] 1. Gunakan tabel antrean Admin TU yang sudah ada (UI/UX)
-  - [x] 2. Pisahkan antrean mahasiswa (`/admin/dashboard`) dan dosen (`/admin/dashboard-dosen`) (Backend)
-  - [x] 3. Tampilkan nama, identitas, role, jenis surat, tanggal, status, dan tautan detail (Front-end)
-  - [x] 4. Uji cakupan pengusul dan blokir akses non-Admin TU (`tests/Feature/HakAksesRoleTest.php`)
+  - [x] 1. Desain tata letak tabel antrean surat untuk Admin TU (UI/UX)
+  - [x] 2. Buat query dan endpoint daftar antrean semua pengusul (Backend) (`GET /admin/dashboard`, `GET /admin/dashboard-dosen`)
+  - [x] 3. Bangun halaman tabel antrean dan detail surat di Admin TU (Front-end) (`resources/views/admin/dashboard*.blade.php`)
+  - [x] 4. Uji tampilan antrean Admin TU dan blokir akses non-TU (Pengujian) (`tests/Feature/HakAksesRoleTest.php`)
 * **Bukti Pengujian:**
   ```text
   php vendor/bin/phpunit tests/Feature/HakAksesRoleTest.php --testdox
   OK (9 tests, 32 assertions)
   ```
-* **Batas cakupan:** DB tidak memiliki role Tendik terpisah; klarifikasi pengguna menyatakan Tendik adalah Admin TU. Antrean memisahkan pengajuan berdasarkan role mahasiswa dan dosen.
-* **Target Pengerjaan:**
-  * Route: `/admin/...`
-  * Controller: Alur disposisi dan pemrosesan surat TU.
+* **Dokumentasi Terkait:** `docs/progres-b-05.md`
 
 ---
 
 ### 4. [B-15a] Pembuatan dan penyimpanan template surat baru oleh Admin TU
-* **Status:** Antrean Kerja (*Doing*)
+* **Status:** Sedang Berjalan (Development tuntas 100%, sisa QA testing)
+* **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
-  - [ ] 1. Buat tabel database dan migration untuk template & field (Backend)
-  - [ ] 2. Buat endpoint simpan template surat baru beserta field-nya (Backend)
-  - [ ] 3. Bangun halaman form pembuatan template baru untuk Admin TU (Front-end)
-  - [ ] 4. Tambahkan validasi field wajib pada penyimpanan template (Backend)
-  - [ ] 5. Uji pembuatan template baru dan skenario gagal validasi (Pengujian)
+  - [x] 1. Buat tabel database dan migration untuk template & field (Backend) (`jenis_surat` table & migration)
+  - [x] 2. Buat endpoint simpan template surat baru beserta field-nya (Backend) (`routes/web.php` CRUD routes)
+  - [x] 3. Bangun halaman form pembuatan template baru untuk Admin TU (Front-end) (`resources/views/admin/template-surat/*`)
+  - [x] 4. Tambahkan validasi field wajib pada penyimpanan template (Backend) (Validasi unik nama/kode, regex field dinamis, revisi tab kategori Mahasiswa/Dosen)
+  - [ ] 5. Uji pembuatan template baru dan skenario gagal validasi (Pengujian) (Tanggung jawab QA: Arman Dava Wicaksono)
+* **Dokumentasi Terkait:** `docs/progres-b-15a.md`
 
 ---
 
 ### 5. [B-06] Pemilihan jenis surat dari daftar template aktif
 * **Status:** Selesai
+* **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
   - [x] 1. Buat endpoint daftar template aktif untuk halaman pengusul (Backend) (`GET /api/template-surat`, khusus mahasiswa/dosen)
   - [x] 2. Bangun fitur pilih template & render kolom form dinamis (Front-end) (`resources/views/surat/form-dinamis.blade.php`, identitas dikunci di server)

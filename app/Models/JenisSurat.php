@@ -18,6 +18,7 @@ class JenisSurat extends Model
         'nama',
         'slug',
         'kode',
+        'indeks_kegiatan',
         'target_user',
         'scope_nomor',
         'fields',

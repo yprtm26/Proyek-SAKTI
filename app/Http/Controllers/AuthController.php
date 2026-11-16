@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Carbon;
 use App\Models\User;
 
 class AuthController extends Controller
 {
+    const LOCKOUT_THRESHOLD = 3;   // Setiap kelipatan 3x gagal → kunci
+    const LOCKOUT_BASE_MINUTES = 1; // Durasi kunci bertambah 1 menit per kelipatan
     // // tampilkan form login
     // public function showLogin()
     // {
@@ -70,6 +73,27 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
+        $user = User::where('username', $request->username)->first();
+
+        // Cek apakah akun sedang terkunci
+        if ($user && $user->locked_until) {
+            if ($user->locked_until->isFuture()) {
+                $secondsRemaining = (int) Carbon::now()->diffInSeconds($user->locked_until, false);
+                if ($secondsRemaining > 0) {
+                    $lockLevel = intdiv($user->failed_login_attempts, self::LOCKOUT_THRESHOLD);
+                    $minutes = ceil($secondsRemaining / 60);
+                    return back()->withInput($request->only('username'))->withErrors([
+                        'username' => "Akun Anda dikunci sementara karena {$user->failed_login_attempts} kali salah password. Silakan coba lagi dalam {$minutes} menit.",
+                    ])->with('lockout_seconds', $secondsRemaining);
+                }
+            }
+
+            // Masa kunci selesai, hapus lock tapi JANGAN reset counter
+            $user->update([
+                'locked_until' => null,
+            ]);
+        }
+
         $credentials = [
             'cn' => $request->username,
             'password' => $request->password,
@@ -82,9 +106,16 @@ class AuthController extends Controller
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
 
-            $user = Auth::user();
+            /** @var User $authenticatedUser */
+            $authenticatedUser = Auth::user();
+            if ($authenticatedUser) {
+                $authenticatedUser->update([
+                    'failed_login_attempts' => 0,
+                    'locked_until' => null,
+                ]);
+            }
 
-            switch ($user->role) {
+            switch ($authenticatedUser->role) {
                 case 'admin':
                     return redirect('/admin/dashboard');
 
@@ -109,9 +140,37 @@ class AuthController extends Controller
             }
         }
 
-        // SEMENTARA SEBELUM LDAP
-        return back()->withErrors([
-            'username' => 'Username atau password salah',
+        // Login gagal: catat percobaan jika user ada di database
+        if ($user) {
+            $attempts = $user->failed_login_attempts + 1;
+
+            // Setiap kelipatan 3x gagal (3, 6, 9, ...): kunci akun bertambah 1 menit per level
+            if ($attempts % self::LOCKOUT_THRESHOLD === 0) {
+                $multiplier = intdiv($attempts, self::LOCKOUT_THRESHOLD);
+                $lockMinutes = $multiplier * self::LOCKOUT_BASE_MINUTES;
+                $lockedUntil = Carbon::now()->addMinutes($lockMinutes);
+
+                $user->update([
+                    'failed_login_attempts' => $attempts,
+                    'locked_until' => $lockedUntil,
+                ]);
+
+                $secondsRemaining = $lockMinutes * 60;
+                return back()->withInput($request->only('username'))->withErrors([
+                    'username' => "Akun Anda dikunci sementara karena {$attempts} kali salah password. Silakan coba lagi dalam {$lockMinutes} menit.",
+                ])->with('lockout_seconds', $secondsRemaining);
+            }
+
+            $user->update(['failed_login_attempts' => $attempts]);
+            $sisaMenujuKunci = self::LOCKOUT_THRESHOLD - ($attempts % self::LOCKOUT_THRESHOLD);
+
+            return back()->withInput($request->only('username'))->withErrors([
+                'username' => "Username atau password salah. Sisa percobaan sebelum akun dikunci: {$sisaMenujuKunci} kali.",
+            ]);
+        }
+
+        return back()->withInput($request->only('username'))->withErrors([
+            'username' => 'Username atau password salah.',
         ]);
     }
 

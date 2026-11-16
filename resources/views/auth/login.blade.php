@@ -22,6 +22,11 @@
         .animate-fadeIn {
             animation: fadeIn 0.8s ease-in-out;
         }
+        /* Hapus tombol reveal password bawaan browser Edge/Chrome Windows */
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear {
+            display: none;
+        }
     </style>
 </head>
 
@@ -43,8 +48,22 @@
                 <img src="{{ asset('img/logo.jpeg') }}" alt="Logo Universitas YARSI" class="w-36">
             </div>
 
-            @if ($errors->any())
-                <div class="mb-4 text-sm text-red-600 text-center">
+            @if (session('lockout_seconds'))
+                <div class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200"
+                     role="alert"
+                     aria-live="assertive"
+                     id="lockout-alert">
+                    <p class="text-sm font-semibold text-red-800 mb-1">Akun dikunci sementara</p>
+                    <p class="text-sm text-red-700">
+                        Coba lagi dalam
+                        <span id="countdown-display"
+                              class="font-bold text-red-900"
+                              aria-label="Sisa waktu kunci akun">
+                        </span>
+                    </p>
+                </div>
+            @elseif ($errors->any())
+                <div class="mb-4 text-sm text-red-600 text-center" role="alert">
                     {{ $errors->first() }}
                 </div>
             @endif
@@ -54,24 +73,26 @@
 
                 <!-- Username -->
                 <div>
-                    <label class="block text-sm mb-1 text-gray-700">Username</label>
-                    <input type="text" name="username" required
-                        class="w-full px-4 py-2 border rounded-lg
-                        focus:ring-2 focus:ring-orange-500">
+                    <label for="username" class="block text-sm mb-1 text-gray-700 font-medium">Username</label>
+                    <input type="text" id="username" name="username" required
+                        value="{{ old('username') }}"
+                        autocomplete="username"
+                        class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
                 </div>
 
                 <!-- Password -->
                 <div>
-                    <label class="block text-sm mb-1 text-gray-700">Password</label>
+                    <label for="password" class="block text-sm mb-1 text-gray-700 font-medium">Password</label>
                     <div class="relative">
                         <input type="password" id="password" name="password" required
-                            class="w-full px-4 py-2 pr-12 border rounded-lg
-                            focus:ring-2 focus:ring-orange-500">
+                            autocomplete="current-password"
+                            class="w-full px-4 py-2 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
 
                         <button type="button"
                             onclick="togglePassword()"
                             id="toggleIcon"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-orange-500">
+                            aria-label="Tampilkan atau sembunyikan password"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-orange-500 cursor-pointer p-1">
 
                             <svg id="eyeClosed" xmlns="http://www.w3.org/2000/svg"
                                 class="w-5 h-5" viewBox="0 0 24 24"
@@ -94,8 +115,11 @@
                 </div>
 
                 <button type="submit"
+                    id="btn-login"
                     class="w-full bg-orange-500 hover:bg-orange-600
-                    text-white py-2 rounded-lg font-semibold transition">
+                    text-white py-2 rounded-lg font-semibold transition
+                    disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    @if(session('lockout_seconds')) disabled @endif>
                     Login
                 </button>
 
@@ -156,6 +180,41 @@
             eyeClosed.classList.remove('hidden'); 
         }
     }
+
+    @if (session('lockout_seconds'))
+    (function initLockoutTimer() {
+        let remaining = {{ (int) session('lockout_seconds') }};
+        const display = document.getElementById('countdown-display');
+        const submitBtn = document.getElementById('btn-login');
+        const alertBox = document.getElementById('lockout-alert');
+
+        function formatTime(totalSeconds) {
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes} menit ${seconds < 10 ? '0' : ''}${seconds} detik`;
+        }
+
+        display.textContent = formatTime(remaining);
+
+        const timer = setInterval(() => {
+            remaining--;
+            if (remaining <= 0) {
+                clearInterval(timer);
+                display.textContent = '0 detik';
+                if (submitBtn) {
+                    submitBtn.removeAttribute('disabled');
+                }
+                if (alertBox) {
+                    alertBox.classList.remove('bg-red-50', 'border-red-200');
+                    alertBox.classList.add('bg-green-50', 'border-green-200');
+                    alertBox.innerHTML = '<p class="text-sm font-semibold text-green-800 text-center">Waktu tunggu selesai. Silakan coba login kembali.</p>';
+                }
+            } else {
+                display.textContent = formatTime(remaining);
+            }
+        }, 1000);
+    })();
+    @endif
 </script>
 
 </body>
