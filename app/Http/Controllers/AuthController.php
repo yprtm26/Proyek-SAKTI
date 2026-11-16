@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Carbon;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 
 class AuthController extends Controller
 {
     const LOCKOUT_THRESHOLD = 5;
+
     const LOCKOUT_MINUTES = 1;
     // // tampilkan form login
     // public function showLogin()
@@ -55,7 +56,6 @@ class AuthController extends Controller
     //         }
     //     }
 
-
     //     return back()->withErrors([
     //         'username' => 'Username atau password salah',
     //     ]);
@@ -81,6 +81,7 @@ class AuthController extends Controller
                 $secondsRemaining = (int) Carbon::now()->diffInSeconds($user->locked_until, false);
                 if ($secondsRemaining > 0) {
                     $minutes = ceil($secondsRemaining / 60);
+
                     return back()->withInput($request->only('username'))->withErrors([
                         'username' => "Akun Anda dikunci sementara karena {$user->failed_login_attempts} kali salah password. Silakan coba lagi dalam {$minutes} menit.",
                     ])->with('lockout_seconds', $secondsRemaining);
@@ -103,6 +104,8 @@ class AuthController extends Controller
         ];
 
         if (Auth::attempt($credentials)) {
+            // Cegah Session Fixation: ID sesi lama dibuang dan diganti ID baru
+            // tepat setelah verifikasi LDAP berhasil.
             $request->session()->regenerate();
 
             /** @var User $authenticatedUser */
@@ -112,6 +115,8 @@ class AuthController extends Controller
                     'failed_login_attempts' => 0,
                     'locked_until' => null,
                 ]);
+
+                $this->storeMinimalSessionIdentity($request, $authenticatedUser);
             }
 
             switch ($authenticatedUser->role) {
@@ -134,8 +139,7 @@ class AuthController extends Controller
                     return redirect('/dekan/dashboard');
 
                 default:
-                    Auth::logout();
-                    return redirect('/login');
+                    return $this->logout($request);
             }
         }
 
@@ -153,6 +157,7 @@ class AuthController extends Controller
                 ]);
 
                 $secondsRemaining = $lockMinutes * 60;
+
                 return back()->withInput($request->only('username'))->withErrors([
                     'username' => "Akun Anda dikunci sementara karena {$attempts} kali salah password. Silakan coba lagi dalam {$lockMinutes} menit.",
                 ])->with('lockout_seconds', $secondsRemaining);
@@ -171,12 +176,64 @@ class AuthController extends Controller
         ]);
     }
 
-    // logout
+    /**
+     * Simpan hanya identitas minimal yang dibutuhkan aplikasi.
+     *
+     * Password (plaintext/hash), kredensial bind LDAP, dan atribut sensitif
+     * LDAP tidak boleh masuk ke sesi. Laravel sendiri hanya menyimpan ID user
+     * pada guard; data di bawah ini adalah identitas tampilan yang aman.
+     */
+    private function storeMinimalSessionIdentity(Request $request, User $user): void
+    {
+        $session = $request->session();
+
+        $session->put([
+            'auth_identity' => [
+                'user_id' => $user->getAuthIdentifier(),
+                'nama' => $user->name,
+                'role' => $user->role,
+                'npm' => $user->npm,
+                'nidn' => $user->nidn,
+            ],
+            // Timestamp untuk idle timeout (diperbarui middleware) dan
+            // absolute timeout (tidak pernah diperpanjang).
+            'auth_login_at' => now()->getTimestamp(),
+            'auth_last_activity' => now()->getTimestamp(),
+        ]);
+
+        // Defense in depth: buang kunci sensitif apabila pernah tersimpan
+        // oleh kode lama atau oleh proses lain.
+        $session->forget([
+            'password',
+            'password_confirmation',
+            'credentials',
+            'ldap_password',
+            'ldap_credentials',
+            'bind_password',
+            'userpassword',
+        ]);
+    }
+
+    /**
+     * Logout aman: hapus autentikasi, hancurkan sesi di server, ganti token
+     * CSRF, lalu kedaluwarsakan cookie sesi di browser.
+     */
     public function logout(Request $request)
     {
         Auth::logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        // Queue (bukan withCookie) agar cookie kedaluwarsa ditambahkan setelah
+        // StartSession menulis cookie sesi baru pada response.
+        Cookie::queue(
+            Cookie::forget(
+                config('session.cookie'),
+                config('session.path'),
+                config('session.domain')
+            )
+        );
 
         return redirect('/login');
     }

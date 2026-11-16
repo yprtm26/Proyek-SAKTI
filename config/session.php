@@ -32,7 +32,21 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    'lifetime' => (int) env('SESSION_LIFETIME', 30),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Absolute Session Lifetime
+    |--------------------------------------------------------------------------
+    |
+    | Batas waktu absolut (dalam menit) sejak pengguna pertama kali login.
+    | Berbeda dengan "lifetime" di atas yang merupakan idle timeout, nilai
+    | ini tidak diperpanjang oleh aktivitas pengguna. Middleware
+    | EnforceSessionTimeout akan memaksa logout setelah batas ini tercapai.
+    |
+    */
+
+    'absolute_lifetime' => (int) env('SESSION_ABSOLUTE_LIFETIME', 480),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 
@@ -169,7 +183,7 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    'secure' => env('SESSION_SECURE_COOKIE', false),
 
     /*
     |--------------------------------------------------------------------------
