@@ -181,9 +181,13 @@ return [
     | to the server if the browser has a HTTPS connection. This will keep
     | the cookie from being sent to you when it can't be done securely.
     |
+    | Default aman: otomatis true ketika APP_ENV=production (HTTPS), sehingga
+    | deployment production tidak pernah mengirim cookie lewat HTTP polos.
+    | Nilai tetap dapat dioverride eksplisit melalui SESSION_SECURE_COOKIE.
+    |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE', false),
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV', 'production') === 'production'),
 
     /*
     |--------------------------------------------------------------------------
