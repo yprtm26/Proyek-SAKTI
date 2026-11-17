@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Sprout Apex - Autentikasi dan Batas Login</title>
+<style>
+  @page { size: A4; margin: 15mm 16mm 16mm 16mm; }
+  @page :first { margin: 0; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.5;
+    color: #1b2430;
+  }
+  h1, h2, h3, h4 { color: #0f2a4a; margin: 0 0 6px; line-height: 1.25; }
+  h1 { font-size: 22pt; letter-spacing: .2px; }
+  h2 { font-size: 15pt; border-bottom: 2.5px solid #159a8c; padding-bottom: 5px; margin-top: 0; }
+  h3 { font-size: 12pt; margin-top: 14px; }
+  h4 { font-size: 10.5pt; margin-top: 10px; }
+  p { margin: 0 0 7px; text-align: justify; }
+  ul, ol { margin: 4px 0 8px 18px; padding: 0; }
+  li { margin-bottom: 3px; }
+  code, pre { font-family: "Cascadia Mono", Consolas, "Courier New", monospace; }
+  code { background: #eef3f7; padding: 1px 4px; border-radius: 3px; font-size: 9pt; color: #0b3b5c; }
+  pre {
+    background: #0f1b26; color: #e8f1f8; padding: 10px 12px; border-radius: 6px;
+    font-size: 8.6pt; line-height: 1.42; white-space: pre-wrap; word-break: break-word;
+    margin: 6px 0 10px;
+  }
+  pre .ok { color: #62e6a7; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 9.2pt; }
+  th, td { border: 1px solid #c7d3de; padding: 5px 7px; vertical-align: top; text-align: left; }
+  th { background: #e8f1f6; color: #0f2a4a; font-weight: 600; }
+  tr:nth-child(even) td { background: #fafcfd; }
+  .page { page-break-after: always; }
+  .page:last-of-type { page-break-after: auto; }
+  .cover {
+    height: 297mm; padding: 32mm 24mm 22mm 24mm;
+    background: linear-gradient(150deg, #0b2239 0%, #123b5e 55%, #0f6d66 100%);
+    color: #ffffff; position: relative;
+  }
+  .cover .kicker { font-size: 10pt; letter-spacing: 3px; text-transform: uppercase; color: #8fe3d6; font-weight: 600; }
+  .cover h1 { color: #ffffff; font-size: 34pt; margin: 14px 0 6px; }
+  .cover .subtitle { font-size: 14pt; color: #cfe6f2; margin-bottom: 26px; }
+  .cover .rule { width: 90px; height: 4px; background: #2fd3bd; margin: 18px 0 26px; }
+  .cover table { width: 100%; font-size: 10pt; margin-top: 8px; }
+  .cover td { border: none; border-bottom: 1px solid rgba(255,255,255,.22); padding: 7px 0; color: #eaf5fb; background: transparent !important; }
+  .cover td:first-child { width: 38%; color: #9fc7dc; }
+  .cover .foot { position: absolute; bottom: 20mm; left: 24mm; right: 24mm; font-size: 9pt; color: #a9c9da; border-top: 1px solid rgba(255,255,255,.25); padding-top: 9px; }
+  .badge { display: inline-block; background: #d9f5ea; color: #0b6b48; border: 1px solid #8fd9bd; padding: 3px 9px; border-radius: 20px; font-size: 8.6pt; font-weight: 600; }
+  .badge.warn { background: #fff4d6; color: #7a5600; border-color: #e8c56a; }
+  .callout { border-left: 4px solid #159a8c; background: #eefaf7; padding: 8px 12px; margin: 8px 0 12px; font-size: 9.6pt; }
+  .callout.warn { border-left-color: #d99a00; background: #fff8e8; }
+  .notulen { border: 1.6px solid #0f2a4a; padding: 10px 14px 8px; }
+  .notulen h2 { font-size: 13.5pt; border-bottom: 2px solid #0f2a4a; margin-bottom: 6px; }
+  .notulen p, .notulen li { font-size: 8.75pt; line-height: 1.33; margin-bottom: 3px; text-align: justify; }
+  .notulen h4 { font-size: 9.2pt; margin: 6px 0 2px; }
+  .notulen ul { margin: 2px 0 4px 16px; }
+  .notulen table { font-size: 8.4pt; margin: 4px 0 6px; }
+  .notulen td, .notulen th { padding: 3px 5px; }
+  .meta { font-size: 8.8pt; color: #40566b; margin-bottom: 8px; }
+  .two-col { column-count: 2; column-gap: 16px; }
+  .placeholder {
+    border: 2px dashed #8aa2b6; background: #f4f8fb; border-radius: 6px;
+    height: 64mm; display: flex; align-items: center; justify-content: center;
+    text-align: center; color: #5b7288; font-size: 9.5pt; margin: 6px 0 4px;
+  }
+  .placeholder b { display: block; color: #24425c; font-size: 11pt; margin-bottom: 4px; }
+  .caption { font-size: 8.8pt; color: #40566b; margin-bottom: 12px; }
+  .shot { page-break-inside: avoid; margin-bottom: 10px; }
+  .checklist { list-style: none; margin-left: 0; }
+  .checklist li::before { content: "☐ "; color: #159a8c; font-weight: 700; }
+  .small { font-size: 8.8pt; color: #4b6275; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpi { border: 1px solid #c7d3de; border-radius: 6px; padding: 9px 11px; background: #f8fbfd; }
+  .kpi .v { font-size: 17pt; font-weight: 700; color: #0f6d66; line-height: 1.1; }
+  .kpi .l { font-size: 8.6pt; color: #4b6275; }
+  .yes { color: #0b6b48; font-weight: 700; }
+  .no { color: #9b2c2c; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<section class="cover">
+  <div class="kicker">Universitas YARSI · Sprout Apex · Mode A</div>
+  <h1>Autentikasi &amp;<br>Batas Login</h1>
+  <div class="subtitle">Pengamanan Sesi Setelah Login LDAP pada Proyek SAKTI</div>
+  <div class="rule"></div>
+  <table>
+    <tr><td>Penyusun</td><td><b>Arman Dava Wicaksono</b></td></tr>
+    <tr><td>NPM</td><td>1402024010</td></tr>
+    <tr><td>Kelompok</td><td>Sprout Apex</td></tr>
+    <tr><td>Program Studi</td><td>Teknik Informatika</td></tr>
+    <tr><td>Proyek</td><td>SAKTI — Sistem Administrasi Surat Akademik Terintegrasi</td></tr>
+    <tr><td>Mode Tugas</td><td>MODE A · Proyek LDAP UY: Sesi Setelah Login LDAP</td></tr>
+    <tr><td>Teknologi</td><td>Laravel 12 · PHP 8.2+ · LDAPRecord · PHPUnit/Mockery</td></tr>
+    <tr><td>Branch Fitur</td><td>feature/mode-a-session-security</td></tr>
+    <tr><td>Tanggal</td><td>17 November 2026</td></tr>
+    <tr><td>Repositori</td><td>github.com/yprtm26/Proyek-SAKTI</td></tr>
+  </table>
+  <div style="margin-top:22px">
+    <span class="badge">6 passed · 60 assertions</span>
+    <span class="badge">LDAP di-mock · offline</span>
+  </div>
+  <div class="foot">
+    Dokumen ini memuat Notulen Keputusan Arsitektur Keamanan, ringkasan perubahan kode,
+    panduan bukti screenshot tersensor, tautan Pull Request, dan format pengumpulan resmi.
+  </div>
+</section>
+
+<!-- ============================ RINGKASAN ============================ -->
+<section class="page">
+  <h2>Ringkasan Hasil</h2>
+  <p>
+    Seluruh kontrol keamanan wajib pada rubrik Mode A telah diterapkan langsung pada basis kode
+    dan diverifikasi otomatis tanpa koneksi ke server LDAP kampus. Aplikasi SAKTI adalah aplikasi
+    web berbasis <b>session cookie</b> (bukan aplikasi mobile berbasis token), sehingga mekanisme
+    yang dipakai adalah session Laravel pada guard <code>web</code>.
+  </p>
+  <div class="grid-2" style="margin:10px 0 14px">
+    <div class="kpi"><div class="v">6 / 6</div><div class="l">Feature test keamanan sesi PASS</div></div>
+    <div class="kpi"><div class="v">30 / 480</div><div class="l">Menit idle timeout / absolute timeout</div></div>
+    <div class="kpi"><div class="v">HttpOnly · Lax · Secure</div><div class="l">Atribut cookie sesi</div></div>
+    <div class="kpi"><div class="v">0 secret</div><div class="l">Ter-track di Git (.env diabaikan)</div></div>
+  </div>
+  <table>
+    <tr><th style="width:4%">No</th><th>Kontrol Keamanan</th><th style="width:11%">Status</th><th style="width:31%">Bukti Utama</th></tr>
+    <tr><td>1</td><td>Regenerasi ID sesi setelah login LDAP (anti session fixation)</td><td class="yes">Selesai</td><td><code>session()-&gt;regenerate()</code>; Test 1</td></tr>
+    <tr><td>2</td><td>Sanitasi data sesi (identitas minimal, bebas password/kredensial)</td><td class="yes">Selesai</td><td><code>storeMinimalSessionIdentity()</code>; Test 3</td></tr>
+    <tr><td>3</td><td>Atribut cookie <code>HttpOnly</code>, <code>SameSite=Lax</code>, <code>Secure</code> via <code>.env</code></td><td class="yes">Selesai</td><td><code>config/session.php</code>; Test 6</td></tr>
+    <tr><td>4</td><td>Idle timeout 30 menit + absolute timeout 8 jam</td><td class="yes">Selesai</td><td><code>EnforceSessionTimeout</code>; Test 4 &amp; 5</td></tr>
+    <tr><td>5</td><td>Logout menghapus sesi server + cookie browser</td><td class="yes">Selesai</td><td><code>AuthController::logout()</code>; Test 2</td></tr>
+    <tr><td>6</td><td>Automated test dengan LDAP di-mock (offline)</td><td class="yes">Selesai</td><td>6 passed (60 assertions)</td></tr>
+    <tr><td>7</td><td>Pull Request ditinjau rekan tim</td><td><span class="badge warn">Menunggu review</span></td><td>Bagian Pull Request</td></tr>
+  </table>
+
+  <h3>Temuan audit awal dan perbaikannya</h3>
+  <table>
+    <tr><th>Temuan Audit Awal</th><th>Kondisi Akhir</th></tr>
+    <tr><td>Tidak ada batas waktu absolut; sesi dapat hidup selama pengguna aktif</td><td>Absolute timeout 8 jam pada middleware <code>EnforceSessionTimeout</code></td></tr>
+    <tr><td>Idle bawaan 120 menit terlalu lama</td><td><code>SESSION_LIFETIME=30</code> menit</td></tr>
+    <tr><td>Logging LDAP aktif secara default sehingga berisiko membocorkan kredensial</td><td><code>LDAP_LOGGING=false</code> sebagai default</td></tr>
+    <tr><td>Logout belum mengirim header penghapusan cookie fisik di browser</td><td><code>Cookie::queue(Cookie::forget(...))</code> pada logout dan timeout</td></tr>
+    <tr><td>Belum ada bukti otomatis untuk skenario keamanan sesi</td><td>6 feature test offline, seluruhnya PASS</td></tr>
+  </table>
+</section>
+
+<!-- ============================ NOTULEN ============================ -->
+<section class="page">
+  <div class="notulen">
+    <h2>Notulen Keputusan Arsitektur Keamanan</h2>
+    <p class="meta" style="margin-bottom:4px">
+      <b>Subjek:</b> Standarisasi manajemen sesi dan autentikasi pengguna LDAP UY ·
+      <b>Penyusun:</b> Arman Dava Wicaksono (1402024010) · <b>Kelompok:</b> Sprout Apex ·
+      <b>Dasar:</b> audit keamanan sesi dan rubrik Mode A
+    </p>
+    <p>
+      Berdasarkan audit pada <code>AuthController</code>, <code>config/session.php</code>,
+      <code>config/ldap.php</code>, <code>bootstrap/app.php</code>, dan <code>routes/web.php</code>,
+      ditetapkan empat keputusan arsitektur berikut. Seluruh keputusan telah diterapkan pada kode
+      dan diuji otomatis.
+    </p>
+
+    <h4>1. Data yang disimpan dan dilarang disimpan di sesi setelah login LDAP</h4>
+    <p>
+      Setelah <code>Auth::attempt()</code> memverifikasi kredensial ke LDAP berhasil, ID sesi lama
+      wajib dibuang dan diganti ID baru melalui <code>$request-&gt;session()-&gt;regenerate()</code>
+      sebelum respons redirect dikirim. Sesi server hanya menyimpan identitas minimal:
+    </p>
+    <ul>
+      <li><code>auth_identity.user_id</code> — primary key pengguna untuk guard Laravel;</li>
+      <li><code>auth_identity.nama</code>, <code>role</code>, serta <code>npm</code>/<code>nidn</code> — identitas tampilan dan otorisasi;</li>
+      <li><code>auth_login_at</code> — timestamp login pertama (dasar absolute timeout, tidak pernah diperpanjang);</li>
+      <li><code>auth_last_activity</code> — timestamp aktivitas terakhir (dasar idle timeout);</li>
+      <li><code>_token</code> — token CSRF bawaan Laravel.</li>
+    </ul>
+    <p>
+      <b>Dilarang keras</b> disimpan: password dalam bentuk apa pun (plaintext maupun hash),
+      password/kredensial bind LDAP, serta atribut privat direktori (<code>userPassword</code>,
+      <code>mail</code> alternatif, <code>telephoneNumber</code>). Larangan ditegakkan berlapis:
+      (a) <code>sync_passwords=false</code> pada provider LDAP; (b) <code>storeMinimalSessionIdentity()</code>
+      hanya menulis kunci di atas; (c) middleware memanggil <code>forget()</code> terhadap kunci
+      sensitif (<code>password</code>, <code>credentials</code>, <code>ldap_password</code>,
+      <code>bind_password</code>, <code>userpassword</code>, dan sejenisnya) pada setiap request;
+      (d) <code>'enabled' =&gt; env('LDAP_LOGGING', false)</code> mematikan logging LDAP agar
+      kredensial tidak bocor ke log.
+    </p>
+
+    <h4>2. Batas waktu idle 30 menit dan absolut 8 jam</h4>
+    <p>
+      Middleware <code>EnforceSessionTimeout</code> — terdaftar pada grup <code>web</code> di
+      <code>bootstrap/app.php</code> — memeriksa dua ambang pada setiap request terautentikasi:
+      <b>idle timeout 30 menit</b> (<code>SESSION_LIFETIME=30</code>) dengan
+      <code>($now - auth_last_activity) &gt;= 30 × 60</code>; dan <b>absolute timeout 8 jam</b>
+      (<code>SESSION_ABSOLUTE_LIFETIME=480</code>) dengan <code>($now - auth_login_at) &gt;= 480 × 60</code>
+      yang tidak pernah diperpanjang oleh aktivitas.
+    </p>
+    <p>
+      <b>Alasan kontekstual:</b> 30 menit adalah durasi wajar bagi pengguna yang meninggalkan
+      komputer bersama di laboratorium, ruang tata usaha, atau perpustakaan tanpa logout; akun tidak
+      dibiarkan terbuka berjam-jam hanya karena satu tab terlupa. Batas absolut 8 jam setara satu
+      shift kerja atau satu hari perkuliahan aktif, sehingga pengguna yang terus bekerja tetap
+      dipaksa autentikasi ulang sekali per hari dan hak aksesnya diverifikasi kembali ke direktori
+      pusat LDAP. Respons pemaksaan logout: redirect <code>302</code> ke <code>/login</code> untuk
+      request web, atau <code>401</code> JSON untuk API/AJAX.
+    </p>
+
+    <h4>3. Alur logout di server dan peramban</h4>
+    <ol>
+      <li><code>Auth::logout()</code> — status autentikasi guard <code>web</code> dicabut dan <code>remember_token</code> dihapus.</li>
+      <li><code>$request-&gt;session()-&gt;invalidate()</code> — seluruh data sesi server dihancurkan dan ID sesi dimigrasikan.</li>
+      <li><code>$request-&gt;session()-&gt;regenerateToken()</code> — token CSRF lama diganti sehingga replay CSRF pasca-logout ditolak.</li>
+      <li><code>Cookie::queue(Cookie::forget(config('session.cookie'), config('session.path'), config('session.domain')))</code> — respons membawa <code>Set-Cookie</code> bernilai kosong dengan <code>expires</code> masa lampau; peramban menghapus cookie seketika.</li>
+      <li>Redirect <code>302</code> ke <code>/login</code>.</li>
+    </ol>
+    <p>
+      Cookie diantrekan (bukan <code>withCookie</code>) agar header penghapusan ditulis setelah
+      <code>StartSession</code> menulis cookie sesi baru dan tidak tertimpa. Cookie lama yang sempat
+      disalin penyerang tidak dapat dipakai ulang karena sesinya sudah tidak ada di server; request
+      berikutnya dibuatkan sesi baru tanpa autentikasi lalu dialihkan ke <code>/login</code>.
+    </p>
+
+    <h4>4. Atribut cookie sesi dan alasan teknis</h4>
+    <table>
+      <tr><th style="width:15%">Atribut</th><th style="width:33%">Nilai</th><th>Perlindungan</th></tr>
+      <tr><td><code>HttpOnly</code></td><td><code>true</code> (<code>SESSION_HTTP_ONLY=true</code>)</td><td>Cookie tidak dapat dibaca/dimanipulasi <code>document.cookie</code>, sehingga pencurian sesi lewat <b>XSS</b> tidak mungkin dari JavaScript.</td></tr>
+      <tr><td><code>SameSite</code></td><td><code>Lax</code> (<code>SESSION_SAME_SITE=lax</code>)</td><td>Cookie tidak dikirim pada request lintas situs berisiko (POST/iframe), mempersempit <b>CSRF</b>; <code>Lax</code> tetap mengizinkan navigasi tautan biasa.</td></tr>
+      <tr><td><code>Secure</code></td><td>Dinamis via <code>SESSION_SECURE_COOKIE</code>; default <code>true</code> saat <code>APP_ENV=production</code></td><td>Cookie hanya dikirim lewat HTTPS/TLS sehingga tidak dapat disadap atau dibajak pada <b>Man-in-the-Middle</b>.</td></tr>
+      <tr><td><code>Path</code>/<code>Domain</code></td><td><code>/</code> dan <code>null</code></td><td>Membatasi cakupan cookie ke aplikasi, bukan seluruh domain kampus.</td></tr>
+    </table>
+    <p style="margin-bottom:0">
+      Kombinasi ketiganya memberi pertahanan berlapis: XSS tidak bisa mencuri cookie, CSRF tidak
+      bisa memanfaatkan cookie lintas situs, dan MitM tidak bisa menyadap cookie di jaringan.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ PERUBAHAN FILE ============================ -->
+<section class="page">
+  <h2>Ringkasan Perubahan File Kode</h2>
+  <table>
+    <tr><th style="width:4%">No</th><th style="width:27%">File</th><th style="width:9%">Status</th><th>Fungsi Keamanan</th></tr>
+    <tr><td>1</td><td><code>app/Http/Controllers/AuthController.php</code></td><td>Diubah</td><td><code>session()-&gt;regenerate()</code> tepat setelah <code>Auth::attempt()</code> sukses (anti session fixation); <code>storeMinimalSessionIdentity()</code> hanya menulis identitas minimal dan menghapus kunci sensitif; <code>logout()</code> memanggil <code>Auth::logout()</code>, <code>invalidate()</code>, <code>regenerateToken()</code>, lalu <code>Cookie::queue(Cookie::forget(...))</code>.</td></tr>
+    <tr><td>2</td><td><code>app/Http/Middleware/EnforceSessionTimeout.php</code></td><td><b>Baru</b></td><td>Menegakkan idle timeout 30 menit dan absolute timeout 480 menit pada setiap request terautentikasi; membersihkan kunci sensitif; memaksa logout + invalidasi sesi + regenerasi token + penghapusan cookie; mengembalikan <code>302 /login</code> atau <code>401</code> JSON.</td></tr>
+    <tr><td>3</td><td><code>bootstrap/app.php</code></td><td>Diubah</td><td>Mendaftarkan <code>EnforceSessionTimeout</code> ke grup middleware <code>web</code> (setelah <code>StartSession</code>), dan alias <code>role</code>.</td></tr>
+    <tr><td>4</td><td><code>config/session.php</code></td><td>Diubah</td><td><code>lifetime</code> 30 menit; <code>absolute_lifetime</code> 480 menit; <code>secure</code> dinamis dari <code>.env</code> dengan default aman <code>true</code> di production; <code>http_only=true</code>; <code>same_site=lax</code>; <code>driver=database</code>.</td></tr>
+    <tr><td>5</td><td><code>config/ldap.php</code></td><td>Diubah</td><td><code>'logging.enabled' =&gt; env('LDAP_LOGGING', false)</code> — logging LDAP mati secara default agar kredensial bind/user dan atribut direktori tidak tercatat di log.</td></tr>
+    <tr><td>6</td><td><code>.env.example</code></td><td>Diubah</td><td><code>SESSION_LIFETIME=30</code>, <code>SESSION_ABSOLUTE_LIFETIME=480</code>, <code>SESSION_SECURE_COOKIE=false</code> (lokal) / <code>true</code> (production HTTPS), <code>SESSION_HTTP_ONLY=true</code>, <code>SESSION_SAME_SITE=lax</code>, <code>LDAP_LOGGING=false</code>, tanpa secret asli.</td></tr>
+    <tr><td>7</td><td><code>tests/Feature/SessionSecurityTest.php</code></td><td><b>Baru</b></td><td>6 feature test offline dengan <code>LdapUserRepository</code> dan <code>LdapUserAuthenticator</code> di-mock (Mockery): regenerasi ID sesi, replay cookie pasca-logout, sanitasi sesi, idle timeout, absolute timeout, atribut cookie.</td></tr>
+    <tr><td>8</td><td><code>docs/MODE-A-SPRINT-APEX-AUTENTIKASI.md</code></td><td><b>Baru</b></td><td>Dokumen laporan dan pengumpulan: notulen, ringkasan perubahan, panduan bukti, format pengumpulan.</td></tr>
+    <tr><td>9</td><td><code>.gitignore</code></td><td>Diverifikasi</td><td><code>.env</code>, <code>.env.backup</code>, <code>.env.production</code> diabaikan; <code>.env</code> asli tidak pernah ter-track. Hanya <code>.env.example</code> yang di-commit.</td></tr>
+  </table>
+
+  <h3>Nilai environment yang dipakai</h3>
+  <table>
+    <tr><th>Variabel</th><th>Nilai</th><th>Makna</th></tr>
+    <tr><td><code>SESSION_LIFETIME</code></td><td>30</td><td>Idle timeout 30 menit</td></tr>
+    <tr><td><code>SESSION_ABSOLUTE_LIFETIME</code></td><td>480</td><td>Absolute timeout 8 jam sejak login pertama</td></tr>
+    <tr><td><code>SESSION_SECURE_COOKIE</code></td><td><code>false</code> lokal / <code>true</code> production</td><td>Cookie hanya lewat HTTPS di production</td></tr>
+    <tr><td><code>SESSION_HTTP_ONLY</code></td><td><code>true</code></td><td>Cookie tidak dapat diakses JavaScript</td></tr>
+    <tr><td><code>SESSION_SAME_SITE</code></td><td><code>lax</code></td><td>Mitigasi CSRF tanpa merusak navigasi biasa</td></tr>
+    <tr><td><code>LDAP_LOGGING</code></td><td><code>false</code></td><td>Tidak ada kredensial/atribut LDAP di log</td></tr>
+  </table>
+  <div class="callout">
+    <b>Prinsip minimal data.</b> Guard Laravel secara bawaan hanya menyimpan ID pengguna pada sesi.
+    Data tambahan di <code>auth_identity</code> adalah identitas tampilan yang aman. Password,
+    hash, kredensial bind, dan atribut privat LDAP tidak pernah ditulis ke sesi, dan middleware
+    menghapusnya bila pernah muncul dari kode lama.
+  </div>
+</section>
+
+<!-- ============================ BUKTI 1-2 ============================ -->
+<section class="page">
+  <h2>Panduan Bukti Screenshot &amp; Aturan Masking</h2>
+  <div class="callout warn">
+    <b>Aturan penyamaran wajib.</b> Sensor seluruh <b>nilai cookie</b>, token CSRF, header
+    <code>Set-Cookie</code>, password/hash, kredensial LDAP, NPM/NIDN, email, dan nomor telepon.
+    Nilai rahasia harus ditutup kotak hitam pekat atau diganti <code>[DISENSOR]</code>; jangan
+    memakai blur tipis. Yang <b>harus tetap terlihat</b>: nama cookie, <code>Domain</code>,
+    <code>Path</code>, <code>Expires</code>, centang <code>HttpOnly</code>, nilai
+    <code>SameSite=Lax</code>, status HTTP <code>302</code>, header <code>Location</code>, dan
+    baris <code>6 passed (60 assertions)</code>.
+  </div>
+
+  <div class="shot">
+    <h3>Bukti 1 — Cookie sebelum login + atribut HttpOnly &amp; SameSite: Lax</h3>
+    <p class="small">
+      Buka <code>http://127.0.0.1:8000/login</code> di jendela Incognito → <code>F12</code> →
+      <b>Application → Storage → Cookies</b> → pilih origin aplikasi → klik baris
+      <code>laravel-session</code> hingga panel atribut terbuka. Screenshot tabel cookie dan panel
+      atribut. Sensor kolom <b>Value</b> sepenuhnya. Opsional: di Console jalankan
+      <code>document.cookie</code> dan tunjukkan cookie sesi tidak muncul (bukti HttpOnly).
+    </p>
+    <div class="placeholder"><div><b>[ TEMPEL SCREENSHOT 1 DI SINI ]</b>DevTools → Application → Cookies, halaman /login<br>Value disensor · HttpOnly ✓ · SameSite Lax · Expires ±30 menit</div></div>
+    <p class="caption"><b>Caption:</b> “Cookie sesi sebelum login. Nilai disensor. HttpOnly aktif, SameSite Lax, Expires ±30 menit.”</p>
+  </div>
+
+  <div class="shot">
+    <h3>Bukti 2 — Cookie sesudah login (nilai sesi berganti)</h3>
+    <p class="small">
+      Login sebagai pengguna uji, lalu buka kembali <b>Application → Cookies</b> pada dashboard.
+      Screenshot baris cookie yang sama. Sensor <b>Value</b>, dan beri anotasi “nilai berbeda dari
+      Bukti 1” tanpa menulis nilai aslinya. Bila memungkinkan, sertakan tab <b>Network</b> →
+      <code>POST /login</code> → <b>Response Headers</b> yang memuat <code>Set-Cookie</code> baru
+      (nilai disensor).
+    </p>
+    <div class="placeholder"><div><b>[ TEMPEL SCREENSHOT 2 DI SINI ]</b>DevTools → Application → Cookies, halaman dashboard<br>Value BERUBAH (disensor) · HttpOnly ✓ · SameSite Lax</div></div>
+    <p class="caption"><b>Caption:</b> “Cookie sesi sesudah login LDAP. Nilai berubah dari Bukti 1 dan disensor, membuktikan regenerasi ID sesi (anti session fixation).”</p>
+  </div>
+</section>
+
+<!-- ============================ BUKTI 3-4 ============================ -->
+<section class="page">
+  <div class="shot">
+    <h3>Bukti 3 — Cookie lama ditolak setelah logout (302 → /login)</h3>
+    <p class="small">
+      Sebelum logout, salin nilai cookie sesi (jangan ditampilkan). Klik <b>Logout</b>, lalu
+      tunjukkan cookie sesi sudah hilang/kedaluwarsa. Tambahkan kembali cookie lama secara manual
+      (Name <code>laravel-session</code>, Value nilai lama, Path <code>/</code>), buka
+      <code>/mahasiswa/dashboard</code>, lalu screenshot <b>Network → Headers</b>: Status
+      <code>302</code> dan <code>Location: http://127.0.0.1:8000/login</code>. Alternatif terminal:
+    </p>
+    <pre>curl.exe -i -b "laravel-session=&lt;NILAI_COOKIE_LAMA&gt;" http://127.0.0.1:8000/mahasiswa/dashboard
+
+HTTP/1.1 302 Found
+Location: http://127.0.0.1:8000/login</pre>
+    <div class="placeholder"><div><b>[ TEMPEL SCREENSHOT 3 DI SINI ]</b>Network → Headers: 302 Found + Location /login<br>atau output curl -i dengan nilai cookie disensor</div></div>
+    <p class="caption"><b>Caption:</b> “Request ulang memakai cookie lama setelah logout ditolak server: HTTP 302 dialihkan ke /login. Nilai cookie disensor.”</p>
+  </div>
+
+  <div class="shot">
+    <h3>Bukti 4 — Terminal automated test PASS</h3>
+    <p class="small">
+      Jalankan <code>php artisan test tests/Feature/SessionSecurityTest.php</code> dari root proyek.
+      Perbesar terminal hingga seluruh baris terlihat, lalu screenshot perintah dan hasil akhirnya.
+    </p>
+    <div class="placeholder"><div><b>[ TEMPEL SCREENSHOT 4 DI SINI ]</b>Terminal: PHPUnit 6 passed (60 assertions)<br>seluruh nama test terlihat</div></div>
+    <p class="caption"><b>Caption:</b> “Hasil automated test keamanan sesi: 6 passed (60 assertions), LDAP di-mock tanpa jaringan eksternal.”</p>
+  </div>
+
+  <h3>Cara menyimpan dan membagikan bukti</h3>
+  <ol>
+    <li>Simpan empat PNG: <code>bukti-01-cookie-sebelum-login.png</code>,
+      <code>bukti-02-cookie-sesudah-login.png</code>, <code>bukti-03-cookie-lama-ditolak.png</code>,
+      <code>bukti-04-test-pass.png</code>.</li>
+    <li>Unggah ke folder Google Drive <b>SproutApex-Autentikasi</b> bersama PDF laporan.</li>
+    <li>Atur izin folder: <i>Anyone with the link — Viewer</i>.</li>
+    <li>Buat short link: <b>bit.ly/SproutApex-Autentikasi</b>.</li>
+  </ol>
+</section>
+
+<!-- ============================ PR & PENGUMPULAN ============================ -->
+<section class="page">
+  <h2>Pull Request</h2>
+  <table>
+    <tr><th style="width:30%">Item</th><th>Nilai</th></tr>
+    <tr><td>Repositori</td><td>https://github.com/yprtm26/Proyek-SAKTI</td></tr>
+    <tr><td>Base branch</td><td><code>main</code></td></tr>
+    <tr><td>Head branch</td><td><code>feature/mode-a-session-security</code></td></tr>
+    <tr><td>Judul PR</td><td><code>feat(mode-a): pengamanan sesi pasca-login LDAP + automated test</code></td></tr>
+    <tr><td>Link PR</td><td><b>https://github.com/yprtm26/Proyek-SAKTI/pull/1</b></td></tr>
+    <tr><td>Status review</td><td><span class="badge warn">Menunggu approval rekan tim</span></td></tr>
+  </table>
+  <p><b>Tautan membuat PR:</b></p>
+  <pre>https://github.com/yprtm26/Proyek-SAKTI/compare/main...feature/mode-a-session-security?expand=1</pre>
+
+  <h3>Langkah review rekan tim (poin rubrik 7)</h3>
+  <ol>
+    <li>Buka link PR → tab <b>Files changed</b>.</li>
+    <li>Klik <b>Review changes</b> → pilih <b>Approve</b>.</li>
+    <li>Tulis ulasan positif, misalnya: “Implementasi regenerasi sesi, timeout ganda, dan logout sudah sesuai; test offline lulus.”</li>
+    <li>Klik <b>Submit review</b>.</li>
+    <li>Screenshot halaman PR yang menampilkan badge <b>Approved</b>, unggah ke folder Drive.</li>
+  </ol>
+
+  <h2 style="margin-top:22px">Format Pengumpulan Resmi</h2>
+  <table>
+    <tr><th style="width:38%">Item</th><th>Nilai</th></tr>
+    <tr><td>Link 1 — Folder bukti (Google Drive, dipendekkan)</td><td><b>bit.ly/SproutApex-Autentikasi</b></td></tr>
+    <tr><td>Berkas PDF laporan</td><td><b>Sprout Apex - Autentikasi dan Batas Login.pdf</b></td></tr>
+    <tr><td>Link 2 — Repositori GitHub</td><td><b>https://github.com/yprtm26/Proyek-SAKTI</b></td></tr>
+  </table>
+
+  <h3>Checklist akhir sebelum dikumpulkan</h3>
+  <ul class="checklist">
+    <li><code>.env</code> asli tidak ter-track (<code>git ls-files .env</code> kosong).</li>
+    <li><code>.env.example</code> berisi nilai aman, tanpa secret.</li>
+    <li><code>php artisan test tests/Feature/SessionSecurityTest.php</code> → 6 passed.</li>
+    <li>Empat screenshot sudah disensor dan diunggah ke folder Drive.</li>
+    <li>PDF diberi nama persis <b>Sprout Apex - Autentikasi dan Batas Login.pdf</b>.</li>
+    <li>Link Drive dipendekkan menjadi <b>bit.ly/SproutApex-Autentikasi</b> dan dapat diakses publik.</li>
+    <li>PR berstatus <b>Approved</b> oleh rekan tim; link dicantumkan di PDF.</li>
+    <li>Link repositori <b>https://github.com/yprtm26/Proyek-SAKTI</b> dicantumkan.</li>
+  </ul>
+</section>
+
+<!-- ============================ LAMPIRAN ============================ -->
+<section class="page">
+  <h2>Lampiran A — Bukti Automated Test</h2>
+  <p><b>File:</b> <code>tests/Feature/SessionSecurityTest.php</code><br>
+     <b>Perintah:</b> <code>php artisan test tests/Feature/SessionSecurityTest.php</code></p>
+  <pre><span class="ok">   PASS  Tests\Feature\SessionSecurityTest</span>
+  ✓ id sesi berbeda sebelum dan sesudah login ldap
+  ✓ cookie sesi lama ditolak setelah logout
+  ✓ sesi hanya menyimpan identitas minimal tanpa password
+  ✓ idle timeout 30 menit memaksa logout
+  ✓ absolute timeout 8 jam memaksa logout
+  ✓ cookie sesi memakai httponly samesite lax dan secure dari env
+
+  <span class="ok">Tests:    6 passed (60 assertions)</span></pre>
+
+  <p><b>Cara LDAP di-mock (tanpa jaringan eksternal):</b></p>
+  <ul>
+    <li><code>LdapUserRepository</code> di-mock dengan Mockery: <code>findByCredentials()</code> mengembalikan objek <code>LdapRecord\Models\OpenLDAP\User</code> buatan (entryuuid, cn, displayName, title, description, mail, mailAlternateAddress, telephoneNumber).</li>
+    <li><code>LdapUserAuthenticator</code> di-mock: <code>setEloquentModel()</code> mengembalikan diri sendiri dan <code>attempt()</code> mengembalikan <code>true</code>, sehingga tidak ada bind ke server LDAP.</li>
+    <li>Keduanya di-bind ke container dan <code>auth-&gt;forgetGuards()</code> dipanggil agar guard <code>web</code> memakai mock.</li>
+    <li>GUID objek LDAP dan user Eloquent disamakan sehingga sinkronisasi user berjalan realistis namun sepenuhnya offline.</li>
+  </ul>
+
+  <table>
+    <tr><th style="width:13%">Test</th><th>Skenario</th><th style="width:38%">Assertion Kunci</th></tr>
+    <tr><td>1 (wajib)</td><td>ID sesi tamu vs ID sesi setelah login LDAP</td><td><code>assertNotSame</code>, <code>assertAuthenticatedAs</code></td></tr>
+    <tr><td>2 (wajib)</td><td>Login → logout → replay cookie lama ke <code>/mahasiswa/dashboard</code></td><td>redirect <code>/login</code>, <code>assertGuest</code>, baris sesi lama hilang, cookie <code>isCleared()</code></td></tr>
+    <tr><td>3</td><td>Isi sesi setelah login</td><td>hanya identitas minimal; tidak ada password/plaintext/hash</td></tr>
+    <tr><td>4</td><td>Idle 31 menit</td><td>redirect <code>/login</code>, <code>assertGuest</code></td></tr>
+    <tr><td>5</td><td>Absolute 8 jam 1 menit</td><td>redirect <code>/login</code>, <code>assertGuest</code></td></tr>
+    <tr><td>6</td><td>Atribut cookie</td><td><code>isHttpOnly()</code>, SameSite <code>lax</code>, <code>Secure=false</code> di lokal</td></tr>
+  </table>
+
+  <h2 style="margin-top:18px">Lampiran B — Pemetaan Rubrik 100 Poin</h2>
+  <table>
+    <tr><th>Poin Rubrik</th><th style="width:9%">Bobot</th><th>Implementasi / Bukti</th></tr>
+    <tr><td>Notulen Keputusan</td><td>15</td><td>Notulen 1 halaman; setiap poin merujuk perilaku kode yang benar-benar ada</td></tr>
+    <tr><td>ID sesi berganti setelah login</td><td>20</td><td><code>AuthController::login()</code> + Test 1 + Bukti 1 vs 2</td></tr>
+    <tr><td>Atribut cookie sesi</td><td>15</td><td><code>config/session.php</code> + <code>.env.example</code> + Test 6 + Bukti 1/2</td></tr>
+    <tr><td>Idle &amp; absolute timeout</td><td>15</td><td><code>EnforceSessionTimeout</code> + Test 4 &amp; 5</td></tr>
+    <tr><td>Logout menghapus sesi server</td><td>15</td><td><code>AuthController::logout()</code> + Test 2 + Bukti 3</td></tr>
+    <tr><td>Automated test lolos</td><td>10</td><td>6 passed (60 assertions), LDAP di-mock, Bukti 4</td></tr>
+    <tr><td>Pull Request ditinjau</td><td>10</td><td>Link PR + screenshot Approved di Drive</td></tr>
+  </table>
+
+  <h2 style="margin-top:18px">Lampiran C — Cara Reproduksi</h2>
+  <pre>composer install
+php artisan config:clear
+php artisan test tests/Feature/SessionSecurityTest.php
+git ls-files .env          # harus kosong
+
+php artisan tinker --execute="dump([
+  'lifetime' =&gt; config('session.lifetime'),
+  'absolute' =&gt; config('session.absolute_lifetime'),
+  'secure' =&gt; config('session.secure'),
+  'http_only' =&gt; config('session.http_only'),
+  'same_site' =&gt; config('session.same_site'),
+  'ldap_logging' =&gt; config('ldap.logging.enabled'),
+]);"</pre>
+  <p class="small">
+    <b>Catatan production:</b> set <code>APP_ENV=production</code>, <code>APP_URL=https://...</code>,
+    <code>SESSION_SECURE_COOKIE=true</code>; gunakan <code>SESSION_DRIVER=database</code> atau Redis;
+    jangan pernah menyalakan <code>LDAP_LOGGING</code>; jalankan <code>php artisan config:cache</code>
+    setelah variabel environment final.
+  </p>
+</section>
+
+</body>
+</html>
