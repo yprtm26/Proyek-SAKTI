@@ -358,7 +358,7 @@ lalu buat short link: **`bit.ly/SproutApex-Autentikasi`**. Atur izin folder menj
 | **Base branch** | `main` |
 | **Head branch** | `feature/mode-a-session-security` |
 | **Judul PR** | `feat(mode-a): pengamanan sesi pasca-login LDAP + automated test` |
-| **Link PR** | `[ISI LINK PR DI SINI SETELAH PR DIBUAT]` |
+| **Link PR** | https://github.com/yprtm26/Proyek-SAKTI/pull/1 |
 | **Status review** | Menunggu approval rekan tim |
 
 **Tautan untuk membuat PR (buka di browser):**
