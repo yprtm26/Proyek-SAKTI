@@ -20,6 +20,17 @@
         </p>
     </div>
 
+    @if($errors->any())
+        <div class="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg"
+             role="alert">
+            <ul class="list-disc list-inside text-sm space-y-1">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <form method="POST" action="/mahasiswa/surat/ajukan/{{ $jenisSurat->id }}">
         @csrf
 
@@ -97,24 +108,29 @@
                 <h3 class="font-semibold text-gray-700 mb-3">Periode Magang</h3>
 
                 <div class="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm text-gray-600 mb-1">
-                            Tanggal Mulai
-                        </label>
-                        <input type="date" name="tanggal_mulai" required
-                            class="w-full border rounded-lg px-4 py-2">
-                    </div>
+                    <x-date-field
+                        name="tanggal_mulai"
+                        id="tanggal-mulai"
+                        label="Tanggal Mulai"
+                        :value="old('tanggal_mulai')"
+                        :error-key="'tanggal_mulai'"
+                        hint="Format YYYY-MM-DD. Pilih lewat kalender atau ketik langsung."
+                        required
+                    />
 
-                    <div>
-                        <label class="block text-sm text-gray-600 mb-1">
-                            Tanggal Selesai
-                        </label>
-                        <input type="date" name="tanggal_selesai" required
-                            class="w-full border rounded-lg px-4 py-2">
-                    </div>
+                    <x-date-field
+                        name="tanggal_selesai"
+                        id="tanggal-selesai"
+                        label="Tanggal Selesai"
+                        :value="old('tanggal_selesai')"
+                        :min-field="'tanggal_mulai'"
+                        :error-key="'tanggal_selesai'"
+                        hint="Tidak boleh lebih awal daripada tanggal mulai."
+                        required
+                    />
                 </div>
 
-                <p class="text-sm text-gray-500 mt-2">
+                <p class="text-sm text-gray-600 mt-2">
                     * Pastikan periode magang sudah benar dan sesuai.
                 </p>
 

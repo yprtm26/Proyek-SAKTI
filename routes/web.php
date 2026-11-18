@@ -19,6 +19,7 @@ use App\Models\JenisSurat;
 use App\Models\Semester;
 use App\Models\SuratPengajuan;
 use App\Models\SumberDaya;
+use App\Support\DateRange;
 use App\Support\MasterData;
 use App\Exports\SuratPengajuanExport;
 use App\Exports\DisposisiExport;
@@ -445,7 +446,13 @@ Route::post('/notifikasi/read-all', function () {
                 $rules['dosen_id'] = MasterData::dosenRules(true);
             }
 
-            $validated = $request->validate($rules);
+            // B-09: format tanggal YYYY-MM-DD dan urutan tanggal kegiatan.
+            $rules = array_merge($rules, DateRange::rules($jenisSurat->fields ?? []));
+
+            $validated = $request->validate(
+                $rules,
+                DateRange::messages($jenisSurat->fields ?? [])
+            );
 
             // B-02: Kunci identitas utama agar tidak bisa dimanipulasi dari request
             if (isset($validated['nama_dosen'])) {
@@ -697,20 +704,21 @@ Route::post('/notifikasi/read-all', function () {
             // Surat Permohonan Magang
             elseif ($jenisSurat->slug === 'surat-permohonan-magang') {
 
-                $validated = $request->validate([
-                    'tipe_magang' => 'required|in:reguler-ti,reguler-pdsi,mandiri',
-                    'perihal' => 'required|string',
-                    'kepada_yth' => 'required|string',
-                    'nama_mitra' => 'required|string',
-                    'alamat_mitra' => 'required|string',
-                    'tanggal_mulai' => 'required|date',
-                    'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
-                    'mahasiswa' => 'required|array|min:1',
-                    'mahasiswa.*.npm' => 'required|string',
-                    'mahasiswa.*.nama' => 'required|string',
-                    'mahasiswa.*.semester' => MasterData::semesterRules(true, 'tingkat'),
-                    'mahasiswa.*.no_kontak' => 'required|string',
-                ]);
+                $validated = $request->validate(
+                    [
+                        'tipe_magang' => 'required|in:reguler-ti,reguler-pdsi,mandiri',
+                        'perihal' => 'required|string',
+                        'kepada_yth' => 'required|string',
+                        'nama_mitra' => 'required|string',
+                        'alamat_mitra' => 'required|string',
+                        'mahasiswa' => 'required|array|min:1',
+                        'mahasiswa.*.npm' => 'required|string',
+                        'mahasiswa.*.nama' => 'required|string',
+                        'mahasiswa.*.semester' => MasterData::semesterRules(true, 'tingkat'),
+                        'mahasiswa.*.no_kontak' => 'required|string',
+                    ] + DateRange::rules(['tanggal_mulai', 'tanggal_selesai']),
+                    DateRange::messages(['tanggal_mulai', 'tanggal_selesai'])
+                );
 
                 // VALIDASI PRODI
                 if (
@@ -773,7 +781,13 @@ Route::post('/notifikasi/read-all', function () {
                     $rules['semester'] = MasterData::semesterRules(true, 'paruh');
                 }
 
-                $validated = $request->validate($rules);
+                // B-09: format tanggal YYYY-MM-DD dan urutan tanggal kegiatan.
+                $rules = array_merge($rules, DateRange::rules($jenisSurat->fields ?? []));
+
+                $validated = $request->validate(
+                    $rules,
+                    DateRange::messages($jenisSurat->fields ?? [])
+                );
 
                 // B-02/B-06: Identitas pengusul dikunci di server, bukan hanya
                 // read-only di tampilan, agar tidak bisa dimanipulasi dari request.

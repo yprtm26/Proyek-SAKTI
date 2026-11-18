@@ -1,0 +1,225 @@
+/*
+ * Gaya date picker aksesibel SAKTI (B-09).
+ *
+ * Kontras teks minimal mengikuti WCAG AA (>= 4.5:1) dan setiap kontrol
+ * memiliki focus ring 3px yang terlihat jelas.
+ */
+
+.sakti-datepicker {
+    position: relative;
+}
+
+.sakti-datepicker input[type="date"] {
+    padding-right: 2.75rem;
+    color: #111827;
+    background-color: #ffffff;
+}
+
+/* Sembunyikan ikon bawaan agar tidak bertumpuk dengan tombol kalender. */
+.sakti-datepicker input[type="date"]::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sakti-datepicker input[type="date"]:focus-visible {
+    outline: 3px solid #c2410c;
+    outline-offset: 2px;
+}
+
+.sakti-datepicker-trigger {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    border: 0;
+    border-left: 1px solid #d1d5db;
+    border-radius: 0 0.5rem 0.5rem 0;
+    background-color: #f9fafb;
+    color: #374151;
+    cursor: pointer;
+}
+
+.sakti-datepicker-trigger:hover {
+    background-color: #ffedd5;
+    color: #7c2d12;
+}
+
+.sakti-datepicker-trigger:focus-visible {
+    outline: 3px solid #c2410c;
+    outline-offset: -3px;
+}
+
+.sakti-datepicker-trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.sakti-datepicker-popover {
+    position: absolute;
+    z-index: 60;
+    top: calc(100% + 0.35rem);
+    left: 0;
+    width: 19rem;
+    padding: 0.75rem;
+    border: 1px solid #9ca3af;
+    border-radius: 0.75rem;
+    background-color: #ffffff;
+    color: #111827;
+    box-shadow: 0 12px 30px rgba(17, 24, 39, 0.22);
+}
+
+.sakti-datepicker-popover[hidden] {
+    display: none;
+}
+
+.sakti-datepicker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.sakti-datepicker-header button,
+.sakti-datepicker-footer button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: #ffffff;
+    color: #1f2937;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.sakti-datepicker-header button:hover,
+.sakti-datepicker-footer button:hover {
+    background-color: #ffedd5;
+    color: #7c2d12;
+}
+
+.sakti-datepicker-header button:focus-visible,
+.sakti-datepicker-footer button:focus-visible {
+    outline: 3px solid #c2410c;
+    outline-offset: 2px;
+}
+
+.sakti-datepicker-caption {
+    flex: 1;
+    margin: 0;
+    text-align: center;
+    color: #111827;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.sakti-datepicker-grid {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0.1rem;
+    table-layout: fixed;
+}
+
+.sakti-datepicker-grid th {
+    padding: 0.25rem 0;
+    color: #374151;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.sakti-datepicker-grid td {
+    padding: 0;
+    text-align: center;
+}
+
+.sakti-datepicker-day {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 2px solid transparent;
+    border-radius: 0.5rem;
+    background-color: transparent;
+    color: #111827;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.sakti-datepicker-day:hover {
+    background-color: #ffedd5;
+    color: #7c2d12;
+}
+
+.sakti-datepicker-day:focus-visible {
+    outline: 3px solid #c2410c;
+    outline-offset: 2px;
+}
+
+.sakti-datepicker-day[aria-current="date"] {
+    border-color: #c2410c;
+}
+
+.sakti-datepicker-day[aria-selected="true"],
+.sakti-datepicker-day.is-selected {
+    background-color: #c2410c;
+    border-color: #c2410c;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.sakti-datepicker-day:disabled {
+    background-color: #f3f4f6;
+    color: #6b7280;
+    text-decoration: line-through;
+    cursor: not-allowed;
+}
+
+.sakti-datepicker-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.sakti-datepicker-footer button {
+    min-width: auto;
+    padding: 0.4rem 0.75rem;
+    color: #7c2d12;
+    background-color: #fff7ed;
+    border-color: #fdba74;
+    font-size: 0.85rem;
+}
+
+@media (forced-colors: active) {
+    .sakti-datepicker-popover,
+    .sakti-datepicker-day,
+    .sakti-datepicker-header button,
+    .sakti-datepicker-footer button {
+        border: 2px solid ButtonText;
+    }
+
+    .sakti-datepicker-day[aria-selected="true"] {
+        background-color: Highlight;
+        color: HighlightText;
+    }
+
+    .sakti-datepicker-day:focus-visible,
+    .sakti-datepicker-header button:focus-visible,
+    .sakti-datepicker-footer button:focus-visible,
+    .sakti-datepicker-trigger:focus-visible {
+        outline: 3px solid Highlight;
+    }
+}

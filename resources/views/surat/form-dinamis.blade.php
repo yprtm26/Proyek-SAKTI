@@ -128,6 +128,16 @@
                               rows="3"
                               required
                               class="w-full border rounded-lg px-3 py-2">{{ $nilai }}</textarea>
+                @elseif($tipe === 'date')
+                    <x-date-field
+                        :name="$field"
+                        :id="'field-' . $field"
+                        :value="$nilai"
+                        :min-field="$field === 'tanggal_selesai' ? 'tanggal_mulai' : ($field === 'tanggal_akhir' ? 'tanggal_awal' : null)"
+                        :error-key="$field"
+                        hint="Format YYYY-MM-DD."
+                        required
+                    />
                 @else
                     <input type="{{ $tipe }}"
                            id="field-{{ $field }}"
@@ -138,9 +148,11 @@
                            class="w-full border rounded-lg px-3 py-2">
                 @endif
 
-                @error($field)
-                    <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
-                @enderror
+                @if($tipe !== 'date')
+                    @error($field)
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                @endif
             </div>
         @empty
             <p class="text-sm text-gray-500">

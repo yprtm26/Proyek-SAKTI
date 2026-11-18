@@ -7,6 +7,9 @@
 
     {{-- TAILWIND --}}
     <script src="https://cdn.tailwindcss.com"></script>
+
+    {{-- B-09: date picker aksesibel --}}
+    <link rel="stylesheet" href="{{ asset('css/datepicker.css') }}">
 </head>
 
 <body class="bg-gray-100 min-h-screen flex flex-col">
@@ -282,5 +285,8 @@
 
 {{-- B-08: combobox aksesibel (prodi, semester, dosen) --}}
 <script type="module" src="{{ asset('js/combobox.js') }}"></script>
+
+{{-- B-09: date picker aksesibel (tanggal mulai/selesai) --}}
+<script type="module" src="{{ asset('js/datepicker.js') }}"></script>
 </body>
 </html>
