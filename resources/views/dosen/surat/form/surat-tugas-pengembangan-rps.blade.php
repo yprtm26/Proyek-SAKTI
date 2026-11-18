@@ -1,6 +1,16 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $prodiAkun = \App\Models\Prodi::query()->where('kode', Auth::user()->prodi)->first();
+    $prodiLama = old('prodi_id', $prodiAkun?->id);
+    $labelProdiLama = old('prodi_id')
+        ? \App\Models\Prodi::query()->find(old('prodi_id'))?->nama
+        : $prodiAkun?->nama;
+    $semesterLama = old('semester')
+        ? \App\Models\Semester::query()->where('jenis', 'paruh')->find(old('semester'))
+        : null;
+@endphp
 <main class="max-w-3xl mx-auto p-6">
     
     <div class="mb-6">
@@ -65,29 +75,34 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Program Studi
-            </label>
-            <input type="text"
-                   name="prodi"
-                   value="{{ Auth::user()->prodi }}"
-                   readonly
-                   class="w-full border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed"
-                   required>
+            <x-combobox
+                name="prodi_id"
+                id="prodi-pengembangan-rps"
+                label="Program Studi"
+                endpoint="{{ url('/api/master/prodi') }}"
+                :value="$prodiLama"
+                :value-label="$labelProdiLama"
+                placeholder="-- Pilih Program Studi --"
+                search-placeholder="Cari program studi..."
+                hint="Tab untuk membuka, Enter untuk memilih, Escape untuk menutup."
+                required
+            />
         </div>
 
         <div class="mb-4">
-                    <label class="block text-sm text-gray-600 mb-1">
-                        Semester Aktif Matkul
-                    </label>
-                    <select name="semester"
-                            required
-                            class="w-full border rounded px-3 py-2">
-                        <option value="">-- Pilih Semester --</option>
-                        <option value="Ganjil">Ganjil</option>
-                        <option value="Genap">Genap</option>
-                    </select>
-                </div>
+            <x-combobox
+                name="semester"
+                id="semester-pengembangan-rps"
+                label="Semester Aktif Matkul"
+                endpoint="{{ url('/api/master/semester') }}"
+                :params="['jenis' => 'paruh']"
+                :value="old('semester')"
+                :value-label="$semesterLama?->nama"
+                placeholder="-- Pilih Semester --"
+                search-placeholder="Cari semester..."
+                required
+            />
+        </div>
 
                 <div class="mb-4">
                     <label class="block text-sm text-gray-600 mb-1">

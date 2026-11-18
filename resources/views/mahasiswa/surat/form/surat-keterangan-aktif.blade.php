@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $semesterLama = old('semester')
+        ? \App\Models\Semester::query()->where('jenis', 'paruh')->find(old('semester'))
+        : null;
+@endphp
 
     {{-- FORM --}}
     <main class="max-w-4xl mx-auto p-6">
@@ -61,16 +66,19 @@
 
                 {{-- INPUT DINAMIS --}}
                 <div class="mb-4">
-                    <label class="block text-sm text-gray-600 mb-1">
-                        Semester Aktif
-                    </label>
-                    <select name="semester"
-                            required
-                            class="w-full border rounded px-3 py-2">
-                        <option value="">-- Pilih Semester --</option>
-                        <option value="Ganjil">Ganjil</option>
-                        <option value="Genap">Genap</option>
-                    </select>
+                    <x-combobox
+                        name="semester"
+                        id="semester-aktif"
+                        label="Semester Aktif"
+                        endpoint="{{ url('/api/master/semester') }}"
+                        :params="['jenis' => 'paruh']"
+                        :value="old('semester')"
+                        :value-label="$semesterLama?->nama"
+                        placeholder="-- Pilih Semester --"
+                        search-placeholder="Cari semester..."
+                        hint="Tab untuk membuka, Enter untuk memilih, Escape untuk menutup."
+                        required
+                    />
                 </div>
 
                 <div class="mb-4">

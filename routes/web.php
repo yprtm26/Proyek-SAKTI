@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
@@ -15,8 +16,10 @@ use Carbon\Carbon;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TemplateSuratController;
 use App\Models\JenisSurat;
+use App\Models\Semester;
 use App\Models\SuratPengajuan;
 use App\Models\SumberDaya;
+use App\Support\MasterData;
 use App\Exports\SuratPengajuanExport;
 use App\Exports\DisposisiExport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -93,6 +96,100 @@ Route::get('/api/profil-pengusul', function () {
 Route::get('/api/me', function () {
     return redirect()->route('api.profil-pengusul');
 });
+
+/*
+|--------------------------------------------------------------------------
+| API MASTER DATA DROPDOWN (B-08)
+|--------------------------------------------------------------------------
+| Semua endpoint hanya mengembalikan data master yang aktif sehingga
+| dropdown tidak pernah menampilkan pilihan yang tidak valid.
+*/
+
+Route::get('/api/master/prodi', function (Request $request) {
+    $q = $request->query('q');
+    $limit = $request->query('limit', 50);
+
+    return response()->json([
+        'status' => 'success',
+        'data' => MasterData::prodiOptions(
+            is_string($q) ? $q : null,
+            is_numeric($limit) ? (int) $limit : 50
+        ),
+    ]);
+})->name('api.master.prodi');
+
+Route::get('/api/master/semester', function (Request $request) {
+    $q = $request->query('q');
+    $jenis = $request->query('jenis');
+    $limit = $request->query('limit', 50);
+
+    return response()->json([
+        'status' => 'success',
+        'data' => MasterData::semesterOptions(
+            is_string($q) ? $q : null,
+            is_string($jenis) ? $jenis : null,
+            is_numeric($limit) ? (int) $limit : 50
+        ),
+    ]);
+})->name('api.master.semester');
+
+Route::get('/api/master/dosen', function (Request $request) {
+    $q = $request->query('q');
+    $prodi = $request->query('prodi');
+    $limit = $request->query('limit', 100);
+
+    return response()->json([
+        'status' => 'success',
+        'data' => MasterData::dosenOptions(
+            is_string($q) ? $q : null,
+            is_string($prodi) ? $prodi : null,
+            is_numeric($limit) ? (int) $limit : 100
+        ),
+    ]);
+})->name('api.master.dosen');
+
+/**
+ * Validasi cepat ID master sebelum/ketika form dikirim.
+ * Mengembalikan 422 bila ada ID yang tidak terdaftar di database.
+ */
+Route::match(['get', 'post'], '/api/master/validasi', function (Request $request) {
+    $input = collect($request->only(['prodi_id', 'semester_id', 'dosen_id']))
+        ->filter(fn ($value) => filled($value));
+
+    if ($input->isEmpty()) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Tidak ada ID master yang dikirim.',
+            'errors' => [],
+        ], 422);
+    }
+
+    $rules = [];
+    foreach ($input->keys() as $key) {
+        $rules[$key] = match ($key) {
+            'prodi_id' => MasterData::prodiRules(true),
+            'semester_id' => MasterData::semesterRules(true),
+            'dosen_id' => MasterData::dosenRules(true),
+        };
+    }
+
+    $validator = Validator::make($input->all(), $rules);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Data master tidak valid.',
+            'errors' => $validator->errors(),
+        ], 422);
+    }
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Data master valid.',
+        'data' => $input->all(),
+    ]);
+})->name('api.master.validasi');
+
 
 /*
 |--------------------------------------------------------------------------
@@ -327,6 +424,27 @@ Route::post('/notifikasi/read-all', function () {
                 $rules[$field] = 'required';
             }
 
+            // B-08: field yang dirender sebagai dropdown memakai ID master.
+            $pakaiProdiMaster = $request->exists('prodi_id')
+                || in_array($jenisSurat->slug, [
+                    'surat-tugas-pengembangan-modul',
+                    'surat-tugas-pengembangan-rps',
+                ], true);
+            $pakaiDosenMaster = $request->exists('dosen_id')
+                || $jenisSurat->slug === 'surat-tugas-kegiatan-kuliah';
+
+            if ($pakaiProdiMaster) {
+                unset($rules['prodi']);
+                $rules['prodi_id'] = MasterData::prodiRules(true);
+            }
+            if ($request->exists('semester')) {
+                $rules['semester'] = MasterData::semesterRules(true, 'paruh');
+            }
+            if ($pakaiDosenMaster) {
+                unset($rules['nama_penugas']);
+                $rules['dosen_id'] = MasterData::dosenRules(true);
+            }
+
             $validated = $request->validate($rules);
 
             // B-02: Kunci identitas utama agar tidak bisa dimanipulasi dari request
@@ -342,6 +460,34 @@ Route::post('/notifikasi/read-all', function () {
             if (isset($validated['prodi'])) {
                 $validated['prodi'] = Auth::user()->prodi;
             }
+
+            // B-08: simpan label master agar dokumen tetap terbaca.
+            if (array_key_exists('prodi_id', $validated)) {
+                $prodi = MasterData::findProdi($validated['prodi_id']);
+                if ($prodi) {
+                    $validated['prodi_id'] = $prodi->id;
+                    $validated['prodi'] = $prodi->kode;
+                    $validated['prodi_nama'] = $prodi->nama;
+                }
+            }
+            if (array_key_exists('semester', $validated)) {
+                $semester = MasterData::findSemester($validated['semester']);
+                if ($semester) {
+                    $validated['semester_id'] = $semester->id;
+                    $validated['semester'] = $semester->nama;
+                }
+            }
+            if (array_key_exists('dosen_id', $validated)) {
+                $dosen = User::query()
+                    ->where('role', 'dosen')
+                    ->find($validated['dosen_id']);
+                if ($dosen) {
+                    $validated['dosen_id'] = $dosen->id;
+                    $validated['nama_penugas'] = $dosen->name;
+                    $validated['nidn_penugas'] = $dosen->nidn;
+                }
+            }
+
             if (isset($validated['anggota']) && is_array($validated['anggota']) && count($validated['anggota']) > 0) {
                 $validated['anggota'][0]['nama'] = Auth::user()->name;
             }
@@ -530,15 +676,18 @@ Route::post('/notifikasi/read-all', function () {
             elseif ($jenisSurat->slug === 'surat-permohonan-aktif-akademik') {
 
                 $validated = $request->validate([
-                    'semester' => 'required|in:ganjil,genap',
+                    'semester' => MasterData::semesterRules(true, 'paruh'),
                     'tahun_akademik' => 'required|string',
                     'batas_pembayaran' => 'required|date',
                     'nominal_pembayaran' => 'required|numeric|min:1000',
                     'lampiran' => 'required|file|max:2048|mimes:pdf,jpg,jpeg,png',
                 ]);
 
+                $semester = MasterData::findSemester($validated['semester']);
+
                 $data = [
-                    'semester' => $validated['semester'],
+                    'semester' => $semester?->nama ?? $validated['semester'],
+                    'semester_id' => $semester?->id,
                     'tahun_akademik' => $validated['tahun_akademik'],
                     'batas_pembayaran' => $validated['batas_pembayaran'],
                     'nominal_pembayaran' => $validated['nominal_pembayaran'],
@@ -559,7 +708,7 @@ Route::post('/notifikasi/read-all', function () {
                     'mahasiswa' => 'required|array|min:1',
                     'mahasiswa.*.npm' => 'required|string',
                     'mahasiswa.*.nama' => 'required|string',
-                    'mahasiswa.*.semester' => 'required|string',
+                    'mahasiswa.*.semester' => MasterData::semesterRules(true, 'tingkat'),
                     'mahasiswa.*.no_kontak' => 'required|string',
                 ]);
 
@@ -575,12 +724,17 @@ Route::post('/notifikasi/read-all', function () {
                 ) abort(403);
 
                 $data = $validated;
-                $data['mahasiswa'] = collect($validated['mahasiswa'])->map(function ($m, $i) {
+                $semesterMap = Semester::query()
+                    ->whereIn('id', collect($validated['mahasiswa'])->pluck('semester')->all())
+                    ->pluck('nama', 'id');
+
+                $data['mahasiswa'] = collect($validated['mahasiswa'])->map(function ($m, $i) use ($semesterMap) {
                     return [
                         'npm' => $i === 0 ? Auth::user()->npm : $m['npm'],
                         'nama' => $i === 0 ? Auth::user()->name : $m['nama'],
                         'prodi' => Auth::user()->prodi,
-                        'semester' => $m['semester'],
+                        'semester' => $semesterMap[$m['semester']] ?? $m['semester'],
+                        'semester_id' => (int) $m['semester'],
                         'no_kontak' => $m['no_kontak'],
                         'role_kontak' => $i === 0 ? 'pengaju' : 'anggota',
                     ];
@@ -614,6 +768,11 @@ Route::post('/notifikasi/read-all', function () {
                     $rules[$field] = 'required';
                 }
 
+                // B-08: field semester dirender sebagai dropdown ID master.
+                if (in_array('semester', $jenisSurat->fields ?? [], true)) {
+                    $rules['semester'] = MasterData::semesterRules(true, 'paruh');
+                }
+
                 $validated = $request->validate($rules);
 
                 // B-02/B-06: Identitas pengusul dikunci di server, bukan hanya
@@ -626,6 +785,15 @@ Route::post('/notifikasi/read-all', function () {
                 }
                 if (array_key_exists('prodi', $validated)) {
                     $validated['prodi'] = Auth::user()->prodi;
+                }
+
+                // B-08: simpan label semester agar dokumen tetap terbaca.
+                if (array_key_exists('semester', $validated)) {
+                    $semester = MasterData::findSemester($validated['semester']);
+                    if ($semester) {
+                        $validated['semester_id'] = $semester->id;
+                        $validated['semester'] = $semester->nama;
+                    }
                 }
 
                 // B-02: Kunci pemohon pertama pada anggota tim

@@ -279,5 +279,8 @@
         <strong>© SAKTI 2026</strong> | Way2Go Team
     </div>
 </footer>
+
+{{-- B-08: combobox aksesibel (prodi, semester, dosen) --}}
+<script type="module" src="{{ asset('js/combobox.js') }}"></script>
 </body>
 </html>
