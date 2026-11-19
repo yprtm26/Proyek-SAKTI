@@ -153,22 +153,21 @@
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Tanggal Pelaksanaan
-            </label>
-            <input type="date" name="tanggal"
-                   class="w-full border rounded-lg px-3 py-2"
-                   required>
+            <x-date-field
+                name="tanggal"
+                label="Tanggal Pelaksanaan"
+                :value="old('tanggal')"
+                required
+            />
         </div>
 
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Waktu Pelaksanaan
-            </label>
-            <input type="text" name="waktu"
-                   class="w-full border rounded-lg px-3 py-2"
-                   placeholder="Pk. 08.00 – selesai"
-                   required>
+            <x-time-field
+                name="waktu"
+                label="Waktu Pelaksanaan"
+                :value="old('waktu')"
+                required
+            />
         </div>
 
         <div>

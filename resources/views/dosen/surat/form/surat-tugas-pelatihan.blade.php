@@ -60,20 +60,22 @@
 
         {{-- TANGGAL PELATIHAN --}}
         <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Pelatihan</label>
-            <input type="text" name="tanggal_pelatihan"
-                   class="w-full border rounded px-3 py-2 mt-1"
-                   placeholder="Contoh: 12–13 Maret 2026"
-                   required>
+            <x-date-field
+                name="tanggal_pelatihan"
+                label="Tanggal Pelatihan"
+                :value="old('tanggal_pelatihan')"
+                required
+            />
         </div>
 
         {{-- WAKTU PELATIHAN --}}
         <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Waktu Pelatihan</label>
-            <input type="text" name="waktu_pelatihan"
-                   class="w-full border rounded px-3 py-2 mt-1"
-                   placeholder="Contoh: 08.00 s/d 16.00 WIB"
-                   required>
+            <x-time-field
+                name="waktu_pelatihan"
+                label="Waktu Pelatihan"
+                :value="old('waktu_pelatihan')"
+                required
+            />
         </div>
 
         {{-- ACTION --}}

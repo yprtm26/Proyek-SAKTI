@@ -10,6 +10,9 @@
 
     {{-- B-09: date picker aksesibel --}}
     <link rel="stylesheet" href="{{ asset('css/datepicker.css') }}">
+
+    {{-- B-10 A: time picker aksesibel 24 jam --}}
+    <link rel="stylesheet" href="{{ asset('css/timepicker.css') }}">
 </head>
 
 <body class="bg-gray-100 min-h-screen flex flex-col">
@@ -288,5 +291,8 @@
 
 {{-- B-09: date picker aksesibel (tanggal mulai/selesai) --}}
 <script type="module" src="{{ asset('js/datepicker.js') }}"></script>
+
+{{-- B-10 A: time picker aksesibel (waktu format 24 jam) --}}
+<script type="module" src="{{ asset('js/timepicker.js') }}"></script>
 </body>
 </html>

@@ -138,6 +138,16 @@
                         hint="Format YYYY-MM-DD."
                         required
                     />
+                @elseif($tipe === 'time')
+                    <x-time-field
+                        :name="$field"
+                        :id="'field-' . $field"
+                        :value="$nilai"
+                        :min-field="$field === 'waktu_selesai' ? 'waktu_mulai' : ($field === 'waktu_akhir' ? 'waktu_awal' : ($field === 'jam_selesai' ? 'jam_mulai' : null))"
+                        :error-key="$field"
+                        hint="Format 24 jam HH:mm (contoh: 08:30 atau 14:00)."
+                        required
+                    />
                 @else
                     <input type="{{ $tipe }}"
                            id="field-{{ $field }}"
@@ -148,7 +158,7 @@
                            class="w-full border rounded-lg px-3 py-2">
                 @endif
 
-                @if($tipe !== 'date')
+                @if($tipe !== 'date' && $tipe !== 'time')
                     @error($field)
                         <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
                     @enderror

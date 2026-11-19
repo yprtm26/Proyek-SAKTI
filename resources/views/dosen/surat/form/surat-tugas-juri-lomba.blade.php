@@ -78,28 +78,22 @@
 
         {{-- TANGGAL LOMBA --}}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Tanggal Lomba
-            </label>
-            <input type="text"
-                   name="tanggal_lomba"
-                   value="{{ old('tanggal_lomba') }}"
-                   class="w-full border rounded-lg px-3 py-2"
-                   placeholder="Contoh: 12–13 Maret 2026"
-                   required>
+            <x-date-field
+                name="tanggal_lomba"
+                label="Tanggal Lomba"
+                :value="old('tanggal_lomba')"
+                required
+            />
         </div>
 
         {{-- WAKTU LOMBA --}}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Waktu Lomba
-            </label>
-            <input type="text"
-                   name="waktu_lomba"
-                   value="{{ old('waktu_lomba') }}"
-                   class="w-full border rounded-lg px-3 py-2"
-                   placeholder="Contoh: 08.00 s/d 16.00 WIB"
-                   required>
+            <x-time-field
+                name="waktu_lomba"
+                label="Waktu Lomba"
+                :value="old('waktu_lomba')"
+                required
+            />
         </div>
 
         {{-- TEMPAT LOMBA --}}

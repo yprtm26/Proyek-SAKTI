@@ -77,28 +77,22 @@
 
         {{-- TANGGAL --}}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Tanggal Kegiatan
-            </label>
-            <input type="text"
-                   name="tanggal"
-                   value="{{ old('tanggal') }}"
-                   class="w-full border rounded-lg px-3 py-2"
-                   placeholder="Contoh: 28 Oktober 2025"
-                   required>
+            <x-date-field
+                name="tanggal"
+                label="Tanggal Kegiatan"
+                :value="old('tanggal')"
+                required
+            />
         </div>
 
         {{-- WAKTU --}}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Waktu Kegiatan
-            </label>
-            <input type="text"
-                   name="waktu"
-                   value="{{ old('waktu') }}"
-                   class="w-full border rounded-lg px-3 py-2"
-                   placeholder="Contoh: Pk. 08.00 WIB - selesai"
-                   required>
+            <x-time-field
+                name="waktu"
+                label="Waktu Kegiatan"
+                :value="old('waktu')"
+                required
+            />
         </div>
 
         {{-- TEMPAT --}}

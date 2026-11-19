@@ -21,6 +21,7 @@ use App\Models\SuratPengajuan;
 use App\Models\SumberDaya;
 use App\Support\DateRange;
 use App\Support\MasterData;
+use App\Support\TimeRange;
 use App\Exports\SuratPengajuanExport;
 use App\Exports\DisposisiExport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -449,10 +450,30 @@ Route::post('/notifikasi/read-all', function () {
             // B-09: format tanggal YYYY-MM-DD dan urutan tanggal kegiatan.
             $rules = array_merge($rules, DateRange::rules($jenisSurat->fields ?? []));
 
-            $validated = $request->validate(
+            // B-10 A: format waktu 24 jam HH:mm dan urutan jam pada hari yang sama.
+            $rules = array_merge($rules, TimeRange::rules($jenisSurat->fields ?? []));
+
+            $validator = Validator::make(
+                $request->all(),
                 $rules,
-                DateRange::messages($jenisSurat->fields ?? [])
+                array_merge(
+                    DateRange::messages($jenisSurat->fields ?? []),
+                    TimeRange::messages($jenisSurat->fields ?? [])
+                )
             );
+
+            $validator->after(function ($validator) use ($request, $jenisSurat) {
+                TimeRange::validateOrder($request->all(), $jenisSurat->fields ?? [], $validator);
+            });
+
+            $validated = $validator->validate();
+
+            // B-10 A: normalisasi format waktu ke HH:mm
+            foreach ($jenisSurat->fields ?? [] as $field) {
+                if (TimeRange::isTimeField($field) && isset($validated[$field])) {
+                    $validated[$field] = TimeRange::normalize((string) $validated[$field]);
+                }
+            }
 
             // B-02: Kunci identitas utama agar tidak bisa dimanipulasi dari request
             if (isset($validated['nama_dosen'])) {
@@ -784,10 +805,30 @@ Route::post('/notifikasi/read-all', function () {
                 // B-09: format tanggal YYYY-MM-DD dan urutan tanggal kegiatan.
                 $rules = array_merge($rules, DateRange::rules($jenisSurat->fields ?? []));
 
-                $validated = $request->validate(
+                // B-10 A: format waktu 24 jam HH:mm dan urutan jam pada hari yang sama.
+                $rules = array_merge($rules, TimeRange::rules($jenisSurat->fields ?? []));
+
+                $validator = Validator::make(
+                    $request->all(),
                     $rules,
-                    DateRange::messages($jenisSurat->fields ?? [])
+                    array_merge(
+                        DateRange::messages($jenisSurat->fields ?? []),
+                        TimeRange::messages($jenisSurat->fields ?? [])
+                    )
                 );
+
+                $validator->after(function ($validator) use ($request, $jenisSurat) {
+                    TimeRange::validateOrder($request->all(), $jenisSurat->fields ?? [], $validator);
+                });
+
+                $validated = $validator->validate();
+
+            // B-10 A: normalisasi format waktu ke HH:mm
+            foreach ($jenisSurat->fields ?? [] as $field) {
+                if (TimeRange::isTimeField($field) && isset($validated[$field])) {
+                    $validated[$field] = TimeRange::normalize((string) $validated[$field]);
+                }
+            }
 
                 // B-02/B-06: Identitas pengusul dikunci di server, bukan hanya
                 // read-only di tampilan, agar tidak bisa dimanipulasi dari request.

@@ -110,6 +110,12 @@ if (!function_exists('labelFieldSurat')) {
             'tempat' => 'Tempat',
             'tanggal' => 'Tanggal',
             'waktu' => 'Waktu',
+            'waktu_mulai' => 'Waktu Mulai',
+            'waktu_selesai' => 'Waktu Selesai',
+            'waktu_awal' => 'Waktu Mulai',
+            'waktu_akhir' => 'Waktu Selesai',
+            'jam_mulai' => 'Jam Mulai',
+            'jam_selesai' => 'Jam Selesai',
             'semester' => 'Semester',
             'judul' => 'Judul',
         ];
@@ -147,7 +153,7 @@ if (!function_exists('tipeFieldSurat')) {
             return 'date';
         }
 
-        if ($field === 'waktu' || str_starts_with($field, 'waktu')) {
+        if ($field === 'waktu' || str_starts_with($field, 'waktu') || str_starts_with($field, 'jam') || str_ends_with($field, '_waktu') || str_ends_with($field, '_jam')) {
             return 'time';
         }
 

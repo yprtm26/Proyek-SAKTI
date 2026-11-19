@@ -13,7 +13,7 @@
 | **B-07** | Penyaringan form surat tugas per indeks kegiatan | **Selesai** | Filter daftar formulir dosen berdasarkan Pendidikan, Penelitian, Pengabdian, Kemahasiswaan. Test lolos. |
 | **B-08** | Input prodi, semester, dan dosen melalui dropdown | **Selesai** | Dropdown searchable teraksesibel (Tab/Enter/Esc), master prodi/semester/dosen, dan validasi `exists` + 422. Test lolos. |
 | **B-09** | Pemilihan tanggal awal dan akhir kegiatan (date picker) | **Selesai** | Date picker aksesibel (keyboard + focus ring), format `YYYY-MM-DD`, validasi server tanggal selesai $\ge$ tanggal mulai, dan pesan error terverifikasi. Test lolos. |
-| **B-10 A** | Pemilihan waktu mulai dan selesai kegiatan (time picker) | **Belum dikerjakan** | Mask format 24 jam (`HH:mm`), validasi jam selesai $>$ mulai pada hari yang sama. |
+| **B-10 A** | Pemilihan waktu mulai dan selesai kegiatan (time picker) | **Selesai** | Mask format 24 jam (`HH:mm`), popover visual aksesibel (WCAG AA), normalisasi pemisah titik, dan validasi jam selesai $>$ mulai pada hari yang sama. Test lolos (6 tests, 26 assertions & 11 JS unit tests). |
 | **B-10 B** | Pengisian daftar anggota dan peran dalam kegiatan | **Belum dikerjakan** | Dynamic input row anggota, target klik $\ge 44 \times 44\text{px}$, validasi baris kosong. |
 | **B-13 A** | Penyimpanan pengajuan surat sebagai draf | **Belum dikerjakan** | Status 'Draf' di DB, isolasi dari antrean TU, validasi wajib template. |
 | **B-13 B** | Pembukaan dan pengubahan draf surat milik pengusul | **Belum dikerjakan** | Halaman edit draf, aksi kirim pengajuan, proteksi 403 IDOR lintas akun. |
@@ -129,12 +129,30 @@
 ---
 
 ### 5. [B-10 A] Pemilihan waktu mulai dan selesai kegiatan (time picker)
-* **Status:** Belum dikerjakan (Product Backlog Sprint 2)
+* **Status:** Selesai (100% — Siap dipindahkan ke Review/Done)
 * **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
-  - [ ] 1. Validasi format waktu 24 jam dan urutan waktu di backend (Backend)
-  - [ ] 2. Bangun UI input time picker dengan keyboard mask 24 jam (Front-end)
-  - [ ] 3. Uji input time picker pada hari yang sama dan validasi urutan jam (Pengujian)
+  - [x] 1. Validasi format waktu 24 jam dan urutan waktu di backend (Backend) (`app/Support/TimeRange.php`, `routes/web.php`)
+  - [x] 2. Bangun UI input time picker dengan keyboard mask 24 jam (Front-end) (`resources/views/components/time-field.blade.php`, `public/js/timepicker.js`, `public/css/timepicker.css`)
+  - [x] 3. Uji input time picker pada hari yang sama dan validasi urutan jam (Pengujian) (`tests/Feature/TimeRangeValidationTest.php`, `tests/js/timepicker.test.mjs`)
+* **Bukti Pengujian:**
+  ```text
+  php artisan test --filter=TimeRangeValidationTest
+  PASS  Tests\Feature\TimeRangeValidationTest
+  ✓ form menolak format waktu tidak valid
+  ✓ form menolak waktu selesai lebih awal pada hari yang sama
+  ✓ form menolak waktu selesai sama dengan waktu mulai pada hari yang sama
+  ✓ form menerima waktu selesai lebih akhir pada hari yang sama
+  ✓ form menerima waktu lintas hari jika tanggal selesai berbeda
+  ✓ form dinamis merender komponen time picker untuk field waktu
+  Tests: 6 passed (26 assertions)
+
+  node --test tests/js/timepicker.test.mjs
+  tests 11
+  pass 11
+  fail 0
+  ```
+* **Dokumentasi Terkait:** `docs/progres-b-10a.md`
 
 ---
 
