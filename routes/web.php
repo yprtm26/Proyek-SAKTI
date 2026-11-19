@@ -423,7 +423,12 @@ Route::post('/notifikasi/read-all', function () {
             // VALIDASI DINAMIS
             $rules = [];
             foreach ($jenisSurat->fields as $field) {
-                $rules[$field] = 'required';
+                if ($field === 'anggota') {
+                    $rules['anggota'] = 'nullable|array';
+                    $rules['anggota.*'] = ['nullable', 'max:255', 'not_regex:/[<>]/'];
+                } else {
+                    $rules[$field] = ['required', 'max:500', 'not_regex:/[<>]/'];
+                }
             }
 
             // B-08: field yang dirender sebagai dropdown memakai ID master.
@@ -458,7 +463,10 @@ Route::post('/notifikasi/read-all', function () {
                 $rules,
                 array_merge(
                     DateRange::messages($jenisSurat->fields ?? []),
-                    TimeRange::messages($jenisSurat->fields ?? [])
+                    TimeRange::messages($jenisSurat->fields ?? []),
+                    [
+                        'regex' => 'Input tidak valid. Tidak boleh mengandung tag HTML atau karakter khusus.',
+                    ]
                 )
             );
 
@@ -683,10 +691,14 @@ Route::post('/notifikasi/read-all', function () {
 
                 $request->validate([
                     'mahasiswa' => 'required|array|min:1',
-                    'mahasiswa.*.nama' => 'required|string',
-                    'mahasiswa.*.npm' => 'required|string',
+                    'mahasiswa.*.nama' => ['required', 'string', 'max:255', 'regex:/^[^<>]*$/'],
+                    'mahasiswa.*.npm' => ['required', 'string', 'size:10', 'regex:/^[0-9]{10}$/'],
                     'mahasiswa.*.mata_kuliah' => 'required|array|min:1',
-                    'mahasiswa.*.mata_kuliah.*' => 'string',
+                    'mahasiswa.*.mata_kuliah.*' => ['required', 'string', 'max:255', 'regex:/^[^<>]*$/'],
+                ], [
+                    'mahasiswa.*.npm.regex' => 'Format NPM tidak valid. Harap masukkan 10 digit angka resmi.',
+                    'mahasiswa.*.npm.size' => 'Format NPM tidak valid. Harap masukkan 10 digit angka resmi.',
+                    'regex' => 'Input tidak valid. Tidak boleh mengandung tag HTML atau karakter khusus.',
                 ]);
 
                 $data = [
@@ -728,17 +740,24 @@ Route::post('/notifikasi/read-all', function () {
                 $validated = $request->validate(
                     [
                         'tipe_magang' => 'required|in:reguler-ti,reguler-pdsi,mandiri',
-                        'perihal' => 'required|string',
-                        'kepada_yth' => 'required|string',
-                        'nama_mitra' => 'required|string',
-                        'alamat_mitra' => 'required|string',
+                        'perihal' => ['required', 'string', 'max:500', 'regex:/^[^<>]*$/'],
+                        'kepada_yth' => ['required', 'string', 'max:500', 'regex:/^[^<>]*$/'],
+                        'nama_mitra' => ['required', 'string', 'max:500', 'regex:/^[^<>]*$/'],
+                        'alamat_mitra' => ['required', 'string', 'max:500', 'regex:/^[^<>]*$/'],
                         'mahasiswa' => 'required|array|min:1',
-                        'mahasiswa.*.npm' => 'required|string',
-                        'mahasiswa.*.nama' => 'required|string',
+                        'mahasiswa.*.npm' => ['required', 'string', 'size:10', 'regex:/^[0-9]{10}$/'],
+                        'mahasiswa.*.nama' => ['required', 'string', 'max:255', 'regex:/^[^<>]*$/'],
                         'mahasiswa.*.semester' => MasterData::semesterRules(true, 'tingkat'),
                         'mahasiswa.*.no_kontak' => 'required|string',
                     ] + DateRange::rules(['tanggal_mulai', 'tanggal_selesai']),
-                    DateRange::messages(['tanggal_mulai', 'tanggal_selesai'])
+                    array_merge(
+                        DateRange::messages(['tanggal_mulai', 'tanggal_selesai']),
+                        [
+                            'mahasiswa.*.npm.regex' => 'Format NPM tidak valid. Harap masukkan 10 digit angka resmi.',
+                            'mahasiswa.*.npm.size' => 'Format NPM tidak valid. Harap masukkan 10 digit angka resmi.',
+                            'regex' => 'Input tidak valid. Tidak boleh mengandung tag HTML atau karakter khusus.',
+                        ]
+                    )
                 );
 
                 // VALIDASI PRODI
@@ -794,7 +813,13 @@ Route::post('/notifikasi/read-all', function () {
 
                 $rules = [];
                 foreach ($jenisSurat->fields as $field) {
-                    $rules[$field] = 'required';
+                    if ($field === 'anggota_tim') {
+                        $rules['anggota_tim'] = 'required|array';
+                        $rules['anggota_tim.*.npm'] = ['required', 'regex:/^[0-9]+$/', 'min:8', 'max:12'];
+                        $rules['anggota_tim.*.nama'] = ['required', 'max:255', 'not_regex:/[<>]/'];
+                    } else {
+                        $rules[$field] = ['required', 'max:500', 'not_regex:/[<>]/'];
+                    }
                 }
 
                 // B-08: field semester dirender sebagai dropdown ID master.
@@ -813,7 +838,12 @@ Route::post('/notifikasi/read-all', function () {
                     $rules,
                     array_merge(
                         DateRange::messages($jenisSurat->fields ?? []),
-                        TimeRange::messages($jenisSurat->fields ?? [])
+                        TimeRange::messages($jenisSurat->fields ?? []),
+                        [
+                            'regex' => 'Input tidak valid. Tidak boleh mengandung tag HTML atau karakter khusus.',
+                            'not_regex' => 'Input tidak valid. Tidak boleh mengandung tag HTML atau karakter khusus.',
+                            'anggota_tim.*.npm.regex' => 'Format NPM tidak valid. Hanya boleh angka.',
+                        ]
                     )
                 );
 
@@ -1454,8 +1484,12 @@ Route::post('/notifikasi/read-all', function () {
 
             //  VALIDASI INPUT
             $request->validate([
-                'nomor_surat' => 'required|string',
+                'nomor_surat' => ['required', 'string', 'min:5', 'max:100', 'regex:/^[0-9A-Za-z\/\.\-]+$/'],
                 'tanggal_ttd' => 'required|date',
+            ], [
+                'nomor_surat.regex' => 'Format nomor surat tidak valid. Hanya boleh memuat huruf, angka, garis miring (/), titik (.), dan tanda hubung (-).',
+                'nomor_surat.min' => 'Format nomor surat tidak valid. Minimal 5 karakter.',
+                'nomor_surat.max' => 'Format nomor surat tidak valid. Maksimal 100 karakter.',
             ]);
 
             $nomorSuratBaru = $request->input('nomor_surat');
@@ -1508,9 +1542,17 @@ Route::post('/notifikasi/read-all', function () {
                 return redirect('/admin/dashboard');
             }
 
+            $validated = $request->validate([
+                'alasan_tolak' => ['nullable', 'string', 'min:5', 'max:500', 'regex:/^[^<>]*$/'],
+            ], [
+                'alasan_tolak.regex' => 'Alasan penolakan tidak boleh mengandung tag HTML atau karakter khusus.',
+                'alasan_tolak.min' => 'Alasan penolakan minimal 5 karakter.',
+                'alasan_tolak.max' => 'Alasan penolakan maksimal 500 karakter.',
+            ]);
+
             $surat->update([
                 'status' => 'ditolak',
-                'alasan_tolak' => $request->alasan_tolak ?? null,
+                'alasan_tolak' => $validated['alasan_tolak'] ?? null,
             ]);
 
             // === NOTIF KE MAHASISWA/DOSEN (DITOLAK) ===
@@ -2123,10 +2165,21 @@ Route::post('/notifikasi/read-all', function () {
                 ->with('success', 'Surat disetujui');
         });
 
-        Route::post('/kaprodi/surat/{id}/tolak', function ($id) {
+        Route::post('/kaprodi/surat/{id}/tolak', function (Request $request, $id) {
+
+            $validated = $request->validate([
+                'alasan_tolak' => ['nullable', 'string', 'min:5', 'max:500', 'regex:/^[^<>]*$/'],
+            ], [
+                'alasan_tolak.regex' => 'Alasan penolakan tidak boleh mengandung tag HTML atau karakter khusus.',
+                'alasan_tolak.min' => 'Alasan penolakan minimal 5 karakter.',
+                'alasan_tolak.max' => 'Alasan penolakan maksimal 500 karakter.',
+            ]);
 
             $surat = SuratPengajuan::findOrFail($id);
-            $surat->update(['status' => 'ditolak']);
+            $surat->update([
+                'status' => 'ditolak',
+                'alasan_tolak' => $validated['alasan_tolak'] ?? $surat->alasan_tolak,
+            ]);
 
             // ================================
             // NOTIF KE MAHASISWA
@@ -2372,10 +2425,21 @@ Route::post('/notifikasi/read-all', function () {
                 ->with('success','Surat mahasiswa disetujui final');
         });  
 
-        Route::post('/dekan/surat/{id}/tolak', function ($id) {
+        Route::post('/dekan/surat/{id}/tolak', function (Request $request, $id) {
+
+            $validated = $request->validate([
+                'alasan_tolak' => ['nullable', 'string', 'min:5', 'max:500', 'regex:/^[^<>]*$/'],
+            ], [
+                'alasan_tolak.regex' => 'Alasan penolakan tidak boleh mengandung tag HTML atau karakter khusus.',
+                'alasan_tolak.min' => 'Alasan penolakan minimal 5 karakter.',
+                'alasan_tolak.max' => 'Alasan penolakan maksimal 500 karakter.',
+            ]);
 
             $surat = SuratPengajuan::findOrFail($id);
-            $surat->update(['status' => 'ditolak']);
+            $surat->update([
+                'status' => 'ditolak',
+                'alasan_tolak' => $validated['alasan_tolak'] ?? $surat->alasan_tolak,
+            ]);
 
             $route = $surat->user->role === 'dosen'
                 ? '/dosen/surat/' . $surat->id
@@ -2542,12 +2606,16 @@ Route::post('/notifikasi/read-all', function () {
 
             $request->validate([
                 'name'     => 'required|string|max:255',
-                'username' => 'required|string|max:50|unique:users,username',
+                'username' => ['required', 'string', 'min:3', 'max:30', 'regex:/^[a-zA-Z0-9._-]+$/', 'unique:users,username'],
                 'email'    => 'required|email|unique:users,email',
                 'password' => 'required|min:6',
                 'role'     => 'required|in:admin,kaprodi,dekan',
                 // khusus kaprodi
                 'prodi'    => 'nullable|required_if:role,kaprodi|in:TI,PdSI',
+            ], [
+                'username.regex' => 'Format username tidak valid. Hanya boleh memuat huruf, angka, titik, dan tanda hubung (-).',
+                'username.min'   => 'Username minimal terdiri dari 3 karakter.',
+                'username.max'   => 'Username maksimal terdiri dari 30 karakter.',
             ]);
 
             User::create([

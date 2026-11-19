@@ -69,8 +69,12 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'username' => 'required|string',
+            'username' => ['required', 'string', 'min:3', 'max:30', 'regex:/^[a-zA-Z0-9._-]+$/'],
             'password' => 'required|string',
+        ], [
+            'username.regex' => 'Format username tidak valid. Hanya boleh memuat huruf, angka, titik, dan tanda hubung (-).',
+            'username.min' => 'Username minimal terdiri dari 3 karakter.',
+            'username.max' => 'Username maksimal terdiri dari 30 karakter.',
         ]);
 
         $user = User::where('username', $request->username)->first();
