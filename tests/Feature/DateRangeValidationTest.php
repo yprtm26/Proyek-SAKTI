@@ -70,7 +70,7 @@ class DateRangeValidationTest extends TestCase
             'tanggal_mulai' => '2026-01-05',
             'tanggal_selesai' => '2026-03-05',
             'mahasiswa' => [[
-                'npm' => '22100001',
+                'npm' => '1402021001',
                 'nama' => 'Mahasiswa Uji',
                 'semester' => $this->semesterTingkatId(),
                 'no_kontak' => '08123456789',
