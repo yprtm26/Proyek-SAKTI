@@ -1,6 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    $dosenLama = old('dosen_id')
+        ? \App\Models\User::query()->where('role', 'dosen')->find(old('dosen_id'))
+        : null;
+@endphp
 <main class="max-w-3xl mx-auto p-6">
 
     <div class="mb-6">
@@ -28,12 +33,18 @@
 
         {{-- PENUGAS --}}
         <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-                Nama Penugas
-            </label>
-            <input type="text" name="nama_penugas"
-                   class="w-full border rounded-lg px-3 py-2"
-                   required>
+            <x-combobox
+                name="dosen_id"
+                id="dosen-penugas"
+                label="Nama Penugas"
+                endpoint="{{ url('/api/master/dosen') }}"
+                :value="old('dosen_id')"
+                :value-label="$dosenLama?->name"
+                placeholder="-- Pilih Dosen Penugas --"
+                search-placeholder="Cari nama atau NIDN dosen..."
+                hint="Tab untuk membuka, Enter untuk memilih, Escape untuk menutup."
+                required
+            />
         </div>
 
         <div>

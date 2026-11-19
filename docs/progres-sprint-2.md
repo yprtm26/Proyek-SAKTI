@@ -1,6 +1,6 @@
 # Progres Kerja — Sprint 2 (Proyek SAKTI)
 
-**Terakhir Diperbarui:** 14 November 2026  
+**Terakhir Diperbarui:** 18 November 2026
 **Sprint Goal:** Mengembangkan fitur formulir dinamis dan interaktif (dropdown searchable master, date picker, time picker, tabel dinamis anggota kegiatan, filter indeks surat tugas), manajemen draf pengajuan mandiri (simpan, ubah, hapus permanen draf terproteksi anti-IDOR), serta penguatan keamanan autentikasi melalui mekanisme penguncian akun berjenjang (*progressive lockout*).
 
 ---
@@ -11,8 +11,8 @@
 | :--- | :--- | :---: | :--- |
 | **B-01 B** | Penguncian sementara saat gagal login berulang | **Selesai** | Lockout berjenjang: kelipatan 3x gagal menambah 1 menit kunci. Countdown timer aksesibel, proteksi login saat terkunci. Test lolos (8 tests, 25 assertions). |
 | **B-07** | Penyaringan form surat tugas per indeks kegiatan | **Selesai** | Filter daftar formulir dosen berdasarkan Pendidikan, Penelitian, Pengabdian, Kemahasiswaan. Test lolos. |
-| **B-08** | Input prodi, semester, dan dosen melalui dropdown | **Belum dikerjakan** | Dropdown searchable teraksesibel (Tab/Enter/Esc) & validasi 422 di server. |
-| **B-09** | Pemilihan tanggal awal dan akhir kegiatan (date picker) | **Belum dikerjakan** | Date picker visual & format `YYYY-MM-DD`, validasi tanggal selesai $\ge$ tanggal mulai. |
+| **B-08** | Input prodi, semester, dan dosen melalui dropdown | **Selesai** | Dropdown searchable teraksesibel (Tab/Enter/Esc), master prodi/semester/dosen, dan validasi `exists` + 422. Test lolos. |
+| **B-09** | Pemilihan tanggal awal dan akhir kegiatan (date picker) | **Selesai** | Date picker aksesibel (keyboard + focus ring), format `YYYY-MM-DD`, validasi server tanggal selesai $\ge$ tanggal mulai, dan pesan error terverifikasi. Test lolos. |
 | **B-10 A** | Pemilihan waktu mulai dan selesai kegiatan (time picker) | **Belum dikerjakan** | Mask format 24 jam (`HH:mm`), validasi jam selesai $>$ mulai pada hari yang sama. |
 | **B-10 B** | Pengisian daftar anggota dan peran dalam kegiatan | **Belum dikerjakan** | Dynamic input row anggota, target klik $\ge 44 \times 44\text{px}$, validasi baris kosong. |
 | **B-13 A** | Penyimpanan pengajuan surat sebagai draf | **Belum dikerjakan** | Status 'Draf' di DB, isolasi dari antrean TU, validasi wajib template. |
@@ -77,24 +77,54 @@
 ---
 
 ### 3. [B-08] Input prodi, semester, dan dosen melalui dropdown
-* **Status:** Belum dikerjakan (Product Backlog Sprint 2)
+* **Status:** Selesai (100% — Siap dipindahkan ke Review/Done)
 * **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
-  - [ ] 1. Desain komponen accessible dropdown untuk prodi, semester, dosen (UI/UX)
-  - [ ] 2. Tabel database master prodi/dosen dan API dropdown list (Backend)
-  - [ ] 3. Integrasi custom dropdown searchable dengan keyboard navigation (Front-end)
-  - [ ] 4. Uji fungsi keyboard navigation (Tab/Enter/Esc) & validasi API dropdown (Pengujian)
+  - [x] 1. Desain komponen accessible dropdown untuk prodi, semester, dosen (UI/UX) (`resources/views/components/combobox.blade.php`, `public/js/combobox.js`)
+  - [x] 2. Tabel database master prodi/dosen dan API dropdown list (Backend) (`database/migrations/2026_11_18_000001_create_prodi_table.php`, `database/migrations/2026_11_18_000002_create_semester_table.php`, `app/Support/MasterData.php`, `routes/web.php`)
+  - [x] 3. Integrasi custom dropdown searchable dengan keyboard navigation (Front-end) (`public/js/combobox.js`, form mahasiswa & dosen)
+  - [x] 4. Uji fungsi keyboard navigation (Tab/Enter/Esc) & validasi API dropdown (Pengujian) (`tests/js/combobox.test.mjs`, `tests/Feature/MasterDataDropdownTest.php`)
+* **Bukti Pengujian:**
+  ```text
+  php artisan test --filter=MasterDataDropdownTest
+  PASS  Tests\Feature\MasterDataDropdownTest
+  Tests: 15 passed (102 assertions)
+
+  node --test tests/js
+  tests 9
+  pass 9
+  fail 0
+  ```
+* **Dokumentasi Terkait:** `docs/progres-b-08.md`
 
 ---
 
 ### 4. [B-09] Pemilihan tanggal awal dan akhir kegiatan (date picker)
-* **Status:** Belum dikerjakan (Product Backlog Sprint 2)
+* **Status:** Selesai (100% — Siap dipindahkan ke Review/Done)
 * **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
-  - [ ] 1. Rancang date picker ramah aksesibilitas (kontras & focus ring) (UI/UX)
-  - [ ] 2. Validasi rentang tanggal (tanggal selesai $\ge$ mulai) di server (Backend)
-  - [ ] 3. Pasang date picker di form pengajuan dan parse input teks `YYYY-MM-DD` (Front-end)
-  - [ ] 4. Uji skenario tanggal selesai < tanggal mulai dan verifikasi pesan error (Pengujian)
+  - [x] 1. Rancang date picker ramah aksesibilitas (kontras & focus ring) (UI/UX) (`resources/views/components/date-field.blade.php`, `public/css/datepicker.css`, `public/js/datepicker.js`)
+  - [x] 2. Validasi rentang tanggal (tanggal selesai $\ge$ mulai) di server (Backend) (`app/Support/DateRange.php`, `routes/web.php`)
+  - [x] 3. Pasang date picker di form pengajuan dan parse input teks `YYYY-MM-DD` (Front-end) (`resources/views/mahasiswa/surat/form/surat-permohonan-magang.blade.php`, `resources/views/surat/form-dinamis.blade.php`, `public/js/datepicker.js`)
+  - [x] 4. Uji skenario tanggal selesai < tanggal mulai dan verifikasi pesan error (Pengujian) (`tests/Feature/DateRangeValidationTest.php`, `tests/js/datepicker.test.mjs`)
+* **Bukti Pengujian:**
+  ```text
+  php artisan test --filter=DateRangeValidationTest
+  PASS  Tests\Feature\DateRangeValidationTest
+  ✓ magang menolak tanggal selesai sebelum tanggal mulai
+  ✓ magang menerima tanggal selesai sama dengan tanggal mulai
+  ✓ tanggal harus berformat yyyy mm dd
+  ✓ form dinamis menolak rentang tanggal terbalik
+  ✓ form magang menampilkan date picker aksesibel
+  ✓ form dinamis merender date picker untuk field tanggal
+  Tests: 6 passed (32 assertions)
+
+  node --test tests/js
+  tests 23
+  pass 23
+  fail 0
+  ```
+* **Dokumentasi Terkait:** `docs/progres-b-09.md`
 
 ---
 

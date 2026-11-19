@@ -88,12 +88,14 @@
             @endphp
 
             <div>
-                <label for="field-{{ $field }}" class="block text-sm font-medium text-gray-700 mb-1">
-                    {{ $label }}
-                    @if(! $terkunci)
-                        <span class="text-red-500">*</span>
-                    @endif
-                </label>
+                @if($field !== 'semester')
+                    <label for="field-{{ $field }}" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ $label }}
+                        @if(! $terkunci)
+                            <span class="text-red-500">*</span>
+                        @endif
+                    </label>
+                @endif
 
                 @if($terkunci)
                     <input type="text"
@@ -102,12 +104,40 @@
                            value="{{ $nilai }}"
                            readonly
                            class="w-full border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed">
+                @elseif($field === 'semester')
+                    @php
+                        $semesterLama = old('semester')
+                            ? \App\Models\Semester::query()->where('jenis', 'paruh')->find(old('semester'))
+                            : null;
+                    @endphp
+                    <x-combobox
+                        :name="$field"
+                        :id="'field-' . $field"
+                        :label="$label"
+                        endpoint="{{ url('/api/master/semester') }}"
+                        :params="['jenis' => 'paruh']"
+                        :value="old('semester')"
+                        :value-label="$semesterLama?->nama"
+                        placeholder="-- Pilih Semester --"
+                        search-placeholder="Cari semester..."
+                        required
+                    />
                 @elseif($tipe === 'textarea')
                     <textarea id="field-{{ $field }}"
                               name="{{ $field }}"
                               rows="3"
                               required
                               class="w-full border rounded-lg px-3 py-2">{{ $nilai }}</textarea>
+                @elseif($tipe === 'date')
+                    <x-date-field
+                        :name="$field"
+                        :id="'field-' . $field"
+                        :value="$nilai"
+                        :min-field="$field === 'tanggal_selesai' ? 'tanggal_mulai' : ($field === 'tanggal_akhir' ? 'tanggal_awal' : null)"
+                        :error-key="$field"
+                        hint="Format YYYY-MM-DD."
+                        required
+                    />
                 @else
                     <input type="{{ $tipe }}"
                            id="field-{{ $field }}"
@@ -118,9 +148,11 @@
                            class="w-full border rounded-lg px-3 py-2">
                 @endif
 
-                @error($field)
-                    <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
-                @enderror
+                @if($tipe !== 'date')
+                    @error($field)
+                        <p class="text-red-600 text-sm mt-1">{{ $message }}</p>
+                    @enderror
+                @endif
             </div>
         @empty
             <p class="text-sm text-gray-500">

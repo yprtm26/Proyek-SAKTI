@@ -4,6 +4,9 @@
 @php
     $user = auth()->user();
     $prodi = $user->prodi; // TI / PdSI
+    $semesterPengaju = old('mahasiswa.0.semester')
+        ? \App\Models\Semester::query()->where('jenis', 'tingkat')->find(old('mahasiswa.0.semester'))
+        : null;
 @endphp
 
 <main class="max-w-6xl mx-auto p-6">
@@ -16,6 +19,17 @@
             Isi permohonan magang dengan data yang benar
         </p>
     </div>
+
+    @if($errors->any())
+        <div class="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg"
+             role="alert">
+            <ul class="list-disc list-inside text-sm space-y-1">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
     <form method="POST" action="/mahasiswa/surat/ajukan/{{ $jenisSurat->id }}">
         @csrf
@@ -94,24 +108,29 @@
                 <h3 class="font-semibold text-gray-700 mb-3">Periode Magang</h3>
 
                 <div class="grid md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm text-gray-600 mb-1">
-                            Tanggal Mulai
-                        </label>
-                        <input type="date" name="tanggal_mulai" required
-                            class="w-full border rounded-lg px-4 py-2">
-                    </div>
+                    <x-date-field
+                        name="tanggal_mulai"
+                        id="tanggal-mulai"
+                        label="Tanggal Mulai"
+                        :value="old('tanggal_mulai')"
+                        :error-key="'tanggal_mulai'"
+                        hint="Format YYYY-MM-DD. Pilih lewat kalender atau ketik langsung."
+                        required
+                    />
 
-                    <div>
-                        <label class="block text-sm text-gray-600 mb-1">
-                            Tanggal Selesai
-                        </label>
-                        <input type="date" name="tanggal_selesai" required
-                            class="w-full border rounded-lg px-4 py-2">
-                    </div>
+                    <x-date-field
+                        name="tanggal_selesai"
+                        id="tanggal-selesai"
+                        label="Tanggal Selesai"
+                        :value="old('tanggal_selesai')"
+                        :min-field="'tanggal_mulai'"
+                        :error-key="'tanggal_selesai'"
+                        hint="Tidak boleh lebih awal daripada tanggal mulai."
+                        required
+                    />
                 </div>
 
-                <p class="text-sm text-gray-500 mt-2">
+                <p class="text-sm text-gray-600 mt-2">
                     * Pastikan periode magang sudah benar dan sesuai.
                 </p>
 
@@ -152,9 +171,19 @@
                             </td>
 
                             <td class="border px-2 py-2">
-                                <input name="mahasiswa[0][semester]"
-                                       required
-                                       class="w-full border rounded px-2 py-1">
+                                <x-combobox
+                                    name="mahasiswa[0][semester]"
+                                    id="semester-mahasiswa-0"
+                                    endpoint="{{ url('/api/master/semester') }}"
+                                    :params="['jenis' => 'tingkat']"
+                                    :value="old('mahasiswa.0.semester')"
+                                    :value-label="$semesterPengaju?->nama"
+                                    placeholder="Pilih"
+                                    search-placeholder="Cari semester..."
+                                    aria-label="Semester"
+                                    :error-key="'mahasiswa.0.semester'"
+                                    required
+                                />
                             </td>
 
                             <td class="border px-2 py-2">
@@ -167,6 +196,39 @@
                             <td class="border px-2 py-2 text-center">-</td>
                         </tr>
                     </tbody>
+
+                    {{-- Template baris mahasiswa tambahan (B-08) --}}
+                    <template id="barisMahasiswaTemplate">
+                        <tr>
+                            <td class="border px-2 py-2 text-center">__NOMOR__</td>
+
+                            <td class="border px-2 py-2">
+                                <input name="mahasiswa[__INDEX__][npm]" required class="w-full border rounded px-2 py-1">
+                            </td>
+                            <td class="border px-2 py-2">
+                                <input name="mahasiswa[__INDEX__][nama]" required class="w-full border rounded px-2 py-1">
+                            </td>
+                            <td class="border px-2 py-2">
+                                <x-combobox
+                                    name="mahasiswa[__INDEX__][semester]"
+                                    id="semester-mahasiswa-__INDEX__"
+                                    endpoint="{{ url('/api/master/semester') }}"
+                                    :params="['jenis' => 'tingkat']"
+                                    placeholder="Pilih"
+                                    search-placeholder="Cari semester..."
+                                    aria-label="Semester"
+                                    required
+                                />
+                            </td>
+                            <td class="border px-2 py-2">
+                                <input name="mahasiswa[__INDEX__][no_kontak]" required class="w-full border rounded px-2 py-1">
+                            </td>
+                            <td class="border px-2 py-2 text-center">
+                                <button type="button" onclick="this.closest('tr').remove()"
+                                    class="text-red-600 font-semibold">✕</button>
+                            </td>
+                        </tr>
+                    </template>
                 </table>
 
                 {{-- TAMBAHAN --}}
@@ -202,30 +264,24 @@ let indexMahasiswa = 1;
 
 function tambahMahasiswa() {
     const tbody = document.querySelector('#tabelMahasiswa tbody');
-    const nomor = tbody.children.length + 1;
+    const template = document.getElementById('barisMahasiswaTemplate');
 
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-        <td class="border px-2 py-2 text-center">${nomor}</td>
-        <td class="border px-2 py-2">
-            <input name="mahasiswa[${indexMahasiswa}][npm]" required class="w-full border rounded px-2 py-1">
-        </td>
-        <td class="border px-2 py-2">
-            <input name="mahasiswa[${indexMahasiswa}][nama]" required class="w-full border rounded px-2 py-1">
-        </td>
-        <td class="border px-2 py-2">
-            <input name="mahasiswa[${indexMahasiswa}][semester]" required class="w-full border rounded px-2 py-1">
-        </td>
-        <td class="border px-2 py-2">
-            <input name="mahasiswa[${indexMahasiswa}][no_kontak]" required class="w-full border rounded px-2 py-1">
-        </td>
-        <td class="border px-2 py-2 text-center">
-            <button type="button" onclick="this.closest('tr').remove()"
-                class="text-red-600 font-semibold">✕</button>
-        </td>
-    `;
-    tbody.appendChild(tr);
+    if (!tbody || !template) {
+        return;
+    }
+
+    const nomor = tbody.querySelectorAll('tr').length + 1;
+    const index = indexMahasiswa;
     indexMahasiswa++;
+
+    const html = template.innerHTML
+        .replaceAll('__NOMOR__', String(nomor))
+        .replaceAll('__INDEX__', String(index));
+
+    tbody.insertAdjacentHTML('beforeend', html);
+
+    const barisBaru = tbody.lastElementChild;
+    window.SaktiCombobox?.initAll(barisBaru);
 }
 </script>
 @endsection
