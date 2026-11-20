@@ -3,16 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\LdapAvailability;
+use App\Services\SecurityAuditLogger;
+use App\Support\SensitiveDataSanitizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     const LOCKOUT_THRESHOLD = 5;
 
     const LOCKOUT_MINUTES = 1;
+
+    public function __construct(private LdapAvailability $ldap)
+    {
+    }
     // // tampilkan form login
     // public function showLogin()
     // {
@@ -82,6 +91,12 @@ class AuthController extends Controller
                 if ($secondsRemaining > 0) {
                     $minutes = ceil($secondsRemaining / 60);
 
+                    SecurityAuditLogger::logLoginFailed(
+                        $request->username,
+                        $request,
+                        'Akun terkunci sementara'
+                    );
+
                     return back()->withInput($request->only('username'))->withErrors([
                         'username' => "Akun Anda dikunci sementara karena {$user->failed_login_attempts} kali salah password. Silakan coba lagi dalam {$minutes} menit.",
                     ])->with('lockout_seconds', $secondsRemaining);
@@ -103,7 +118,33 @@ class AuthController extends Controller
             ],
         ];
 
-        if (Auth::attempt($credentials)) {
+        // Gagal Aman (Fail-Closed): cek konektivitas LDAP lebih dahulu.
+        // Tanpa preflight, LdapRecord dapat menelan exception koneksi dan
+        // fallback ke password database, sehingga login bisa lolos saat LDAP mati.
+        try {
+            $this->ldap->ensureAvailable();
+            $loginSuccess = Auth::attempt($credentials);
+        } catch (\Throwable $e) {
+            $incidentId = 'ERR-' . date('Ymd') . '-' . strtoupper(Str::random(4));
+            Log::error(
+                '[SYSTEM_ERROR] Gangguan Layanan Autentikasi/LDAP: '.SensitiveDataSanitizer::message($e->getMessage()),
+                [
+                    'incident_id' => $incidentId,
+                    'identifier'  => SensitiveDataSanitizer::identifier($request->username),
+                    'ip_address'  => $request->ip(),
+                    'exception'   => get_class($e),
+                    'file'        => basename($e->getFile()) . ':' . $e->getLine(),
+                ]
+            );
+
+            SecurityAuditLogger::logLoginFailed($request->username, $request, "Layanan Autentikasi Gagal / Fail-Closed ({$incidentId})");
+
+            return back()->withInput($request->only('username'))->withErrors([
+                'username' => "Layanan autentikasi kampus sedang mengalami gangguan teknis. Permintaan ditolak demi keamanan (ID: {$incidentId}).",
+            ]);
+        }
+
+        if ($loginSuccess) {
             // Cegah Session Fixation: ID sesi lama dibuang dan diganti ID baru
             // tepat setelah verifikasi LDAP berhasil.
             $request->session()->regenerate();
@@ -117,6 +158,7 @@ class AuthController extends Controller
                 ]);
 
                 $this->storeMinimalSessionIdentity($request, $authenticatedUser);
+                SecurityAuditLogger::logLoginSuccess($authenticatedUser, $request);
             }
 
             switch ($authenticatedUser->role) {
@@ -143,7 +185,10 @@ class AuthController extends Controller
             }
         }
 
-        // Login gagal: catat percobaan jika user ada di database
+        // Login gagal: catat audit keamanan (tanpa mencatat password)
+        SecurityAuditLogger::logLoginFailed($request->username, $request, 'Kredensial tidak cocok');
+
+        // Catat percobaan jika user ada di database
         if ($user) {
             $attempts = $user->failed_login_attempts + 1;
 
@@ -220,6 +265,11 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
+        $currentUser = Auth::user();
+        if ($currentUser) {
+            SecurityAuditLogger::logLogout($currentUser, $request);
+        }
+
         Auth::logout();
 
         $request->session()->invalidate();

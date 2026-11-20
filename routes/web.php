@@ -14,6 +14,7 @@ use Carbon\Carbon;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TemplateSuratController;
+use App\Services\SecurityAuditLogger;
 use App\Models\JenisSurat;
 use App\Models\SuratPengajuan;
 use App\Models\SumberDaya;
@@ -39,6 +40,23 @@ Route::get('/', function () {
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+/*
+|--------------------------------------------------------------------------
+| ROUTE UJI KENDALA SISTEM & PENANGANAN ERROR TERPUSAT (TESTING ONLY)
+|--------------------------------------------------------------------------
+*/
+if (app()->environment('local', 'testing')) {
+    Route::get('/_test/trigger-error', function () {
+        // Di local, hanya administrator yang boleh memicu simulasi ini.
+        // Di testing, route dipakai oleh automated test.
+        if (app()->environment('local') && ! (Auth::check() && Auth::user()->role === 'administrator')) {
+            abort(404);
+        }
+
+        throw new \RuntimeException('Simulasi galat internal basis data untuk pengujian error handling.');
+    });
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -324,12 +342,22 @@ Route::post('/notifikasi/read-all', function () {
             // VALIDASI DINAMIS & ALLOWLIST (MODE A)
             $rules = [];
             $customMessages = [];
+
+            // Field identitas ini dikunci dan ditimpa dari akun login di
+            // bawah, sehingga nilai dari request tidak boleh memblokir
+            // pengajuan hanya karena formatnya palsu.
+            $lockedIdentityFields = ['nama_dosen', 'nama_ditugaskan', 'no_nip', 'prodi'];
+
             foreach ($jenisSurat->fields as $field) {
-                if (in_array($field, ['nidn', 'no_nip', 'npm'])) {
+                if (in_array($field, $lockedIdentityFields, true)) {
+                    $rules[$field] = ['nullable', 'string', 'max:500'];
+                } elseif (in_array($field, ['nidn', 'no_nip', 'npm'], true)) {
                     $rules[$field] = ['required', 'string', 'regex:/^[0-9]{8,18}$/'];
                     $customMessages[$field . '.regex'] = 'Nomor identitas harus berupa digit angka yang valid.';
                 } elseif (str_contains($field, 'tanggal')) {
                     $rules[$field] = ['required', 'date'];
+                } elseif ($field === 'anggota') {
+                    $rules[$field] = ['nullable', 'array'];
                 } else {
                     $rules[$field] = ['required', 'string', 'max:500'];
                 }
@@ -613,8 +641,14 @@ Route::post('/notifikasi/read-all', function () {
 
                 $rules = [];
                 $customMessages = [];
+
+                // Identitas pengusul dikunci dan ditimpa dari akun login.
+                $lockedIdentityFields = ['nama', 'npm', 'prodi'];
+
                 foreach ($jenisSurat->fields as $field) {
-                    if ($field === 'npm' || str_ends_with($field, '_npm')) {
+                    if (in_array($field, $lockedIdentityFields, true)) {
+                        $rules[$field] = ['nullable', 'string', 'max:500'];
+                    } elseif ($field === 'npm' || str_ends_with($field, '_npm')) {
                         $rules[$field] = ['required', 'string', 'regex:/^[0-9]{8,12}$/'];
                         $customMessages[$field . '.regex'] = 'Format NPM tidak valid (harus berupa 8-12 digit angka).';
                     } elseif ($field === 'nidn' || str_ends_with($field, '_nidn')) {
@@ -625,12 +659,15 @@ Route::post('/notifikasi/read-all', function () {
                     } elseif ($field === 'lampiran') {
                         $rules[$field] = ['required', 'file', 'mimes:pdf', 'max:2048'];
                         $customMessages[$field . '.mimes'] = 'Lampiran harus berupa dokumen PDF.';
+                    } elseif ($field === 'anggota_tim') {
+                        $rules[$field] = ['nullable', 'array'];
                     } else {
                         $rules[$field] = ['required', 'string', 'max:500'];
                     }
                 }
 
                 if ($request->has('anggota_tim') && is_array($request->anggota_tim)) {
+                    $rules['anggota_tim.*.nama'] = ['required', 'string', 'max:100'];
                     $rules['anggota_tim.*.npm'] = ['required', 'string', 'regex:/^[0-9]{8,12}$/'];
                     $customMessages['anggota_tim.*.npm.regex'] = 'Format NPM anggota tim tidak valid (harus berupa 8-12 digit angka).';
                 }
@@ -2361,6 +2398,40 @@ Route::post('/notifikasi/read-all', function () {
                 ->with('success', 'Akun berhasil ditambahkan');
 
         })->middleware(['auth', 'role:administrator']);
+
+        // ================= UBAH ROLE AKUN =================
+        Route::post('/administrator/ubah-role/{id}', function (Request $request, $id) {
+
+            $request->validate([
+                'role'  => ['required', Rule::in(['admin', 'kaprodi', 'dekan'])],
+                'prodi' => ['nullable', 'required_if:role,kaprodi', 'in:TI,PdSI'],
+            ]);
+
+            $target = User::whereIn('role', ['admin', 'kaprodi', 'dekan'])
+                ->findOrFail($id);
+
+            $oldRole = $target->role;
+            $newRole = $request->role;
+
+            if ($oldRole === $newRole) {
+                return back()->with('success', 'Role tidak berubah');
+            }
+
+            $target->update([
+                'role'  => $newRole,
+                'prodi' => $newRole === 'kaprodi' ? $request->prodi : null,
+            ]);
+
+            SecurityAuditLogger::logRoleChanged(
+                Auth::user(),
+                $target,
+                $oldRole,
+                $newRole,
+                $request
+            );
+
+            return back()->with('success', 'Role akun berhasil diubah');
+        });
 
         // ================= HAPUS AKUN =================
         Route::delete('/administrator/hapus-akun/{id}', function ($id) {
