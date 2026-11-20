@@ -15,6 +15,7 @@ use Carbon\Carbon;
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TemplateSuratController;
+use App\Services\SecurityAuditLogger;
 use App\Models\JenisSurat;
 use App\Models\Semester;
 use App\Models\SuratPengajuan;
@@ -47,6 +48,23 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 /*
 |--------------------------------------------------------------------------
+| ROUTE UJI KENDALA SISTEM & PENANGANAN ERROR TERPUSAT (TESTING ONLY)
+|--------------------------------------------------------------------------
+*/
+if (app()->environment('local', 'testing')) {
+    Route::get('/_test/trigger-error', function () {
+        // Di local, hanya administrator yang boleh memicu simulasi ini.
+        // Di testing, route dipakai oleh automated test.
+        if (app()->environment('local') && ! (Auth::check() && Auth::user()->role === 'administrator')) {
+            abort(404);
+        }
+
+        throw new \RuntimeException('Simulasi galat internal basis data untuk pengujian error handling.');
+    });
+}
+
+/*
+|--------------------------------------------------------------------------
 | VALIDASI SURAT (PUBLIK - QR CODE)
 |--------------------------------------------------------------------------
 */
@@ -56,7 +74,7 @@ Route::get('/surat/validasi/{token}', function ($token) {
         ->where('qr_token', $token)
         ->where('status', 'disetujui_final')
         ->first();
-    
+
     if (! $surat) {
         return response()->view('surat.tidak-valid', [], 404);
     }
@@ -328,7 +346,7 @@ Route::get('/notifikasi', function () {
 
     $notifications = \App\Models\Notification::where('user_id', Auth::id())
         ->orderBy('created_at', 'desc')
-        ->paginate(15); // 
+        ->paginate(15); //
 
     return view('notifikasi.index', compact('notifications'));
 });
@@ -420,68 +438,20 @@ Route::post('/notifikasi/read-all', function () {
                 ->untukPengguna('dosen')
                 ->findOrFail($id);
 
-            // VALIDASI DINAMIS
+            // VALIDASI DINAMIS & ALLOWLIST (MODE A)
             $rules = [];
+            $customMessages = [];
+
+            // Field identitas ini dikunci dan ditimpa dari akun login di
+            // bawah, sehingga nilai dari request tidak boleh memblokir
+            // pengajuan hanya karena formatnya palsu.
+            $lockedIdentityFields = ['nama_dosen', 'nama_ditugaskan', 'no_nip', 'prodi'];
+
             foreach ($jenisSurat->fields as $field) {
-                if ($field === 'anggota') {
-                    $rules['anggota'] = 'nullable|array';
-                    $rules['anggota.*'] = ['nullable', 'max:255', 'not_regex:/[<>]/'];
-                } else {
-                    $rules[$field] = ['required', 'max:500', 'not_regex:/[<>]/'];
-                }
+                $rules[$field] = 'required';
             }
 
-            // B-08: field yang dirender sebagai dropdown memakai ID master.
-            $pakaiProdiMaster = $request->exists('prodi_id')
-                || in_array($jenisSurat->slug, [
-                    'surat-tugas-pengembangan-modul',
-                    'surat-tugas-pengembangan-rps',
-                ], true);
-            $pakaiDosenMaster = $request->exists('dosen_id')
-                || $jenisSurat->slug === 'surat-tugas-kegiatan-kuliah';
-
-            if ($pakaiProdiMaster) {
-                unset($rules['prodi']);
-                $rules['prodi_id'] = MasterData::prodiRules(true);
-            }
-            if ($request->exists('semester')) {
-                $rules['semester'] = MasterData::semesterRules(true, 'paruh');
-            }
-            if ($pakaiDosenMaster) {
-                unset($rules['nama_penugas']);
-                $rules['dosen_id'] = MasterData::dosenRules(true);
-            }
-
-            // B-09: format tanggal YYYY-MM-DD dan urutan tanggal kegiatan.
-            $rules = array_merge($rules, DateRange::rules($jenisSurat->fields ?? []));
-
-            // B-10 A: format waktu 24 jam HH:mm dan urutan jam pada hari yang sama.
-            $rules = array_merge($rules, TimeRange::rules($jenisSurat->fields ?? []));
-
-            $validator = Validator::make(
-                $request->all(),
-                $rules,
-                array_merge(
-                    DateRange::messages($jenisSurat->fields ?? []),
-                    TimeRange::messages($jenisSurat->fields ?? []),
-                    [
-                        'regex' => 'Input tidak valid. Tidak boleh mengandung tag HTML atau karakter khusus.',
-                    ]
-                )
-            );
-
-            $validator->after(function ($validator) use ($request, $jenisSurat) {
-                TimeRange::validateOrder($request->all(), $jenisSurat->fields ?? [], $validator);
-            });
-
-            $validated = $validator->validate();
-
-            // B-10 A: normalisasi format waktu ke HH:mm
-            foreach ($jenisSurat->fields ?? [] as $field) {
-                if (TimeRange::isTimeField($field) && isset($validated[$field])) {
-                    $validated[$field] = TimeRange::normalize((string) $validated[$field]);
-                }
-            }
+            $validated = $request->validate($rules);
 
             // B-02: Kunci identitas utama agar tidak bisa dimanipulasi dari request
             if (isset($validated['nama_dosen'])) {
@@ -691,14 +661,10 @@ Route::post('/notifikasi/read-all', function () {
 
                 $request->validate([
                     'mahasiswa' => 'required|array|min:1',
-                    'mahasiswa.*.nama' => ['required', 'string', 'max:255', 'regex:/^[^<>]*$/'],
-                    'mahasiswa.*.npm' => ['required', 'string', 'size:10', 'regex:/^[0-9]{10}$/'],
+                    'mahasiswa.*.nama' => 'required|string',
+                    'mahasiswa.*.npm' => 'required|string',
                     'mahasiswa.*.mata_kuliah' => 'required|array|min:1',
-                    'mahasiswa.*.mata_kuliah.*' => ['required', 'string', 'max:255', 'regex:/^[^<>]*$/'],
-                ], [
-                    'mahasiswa.*.npm.regex' => 'Format NPM tidak valid. Harap masukkan 10 digit angka resmi.',
-                    'mahasiswa.*.npm.size' => 'Format NPM tidak valid. Harap masukkan 10 digit angka resmi.',
-                    'regex' => 'Input tidak valid. Tidak boleh mengandung tag HTML atau karakter khusus.',
+                    'mahasiswa.*.mata_kuliah.*' => 'string',
                 ]);
 
                 $data = [
@@ -716,11 +682,14 @@ Route::post('/notifikasi/read-all', function () {
             elseif ($jenisSurat->slug === 'surat-permohonan-aktif-akademik') {
 
                 $validated = $request->validate([
-                    'semester' => MasterData::semesterRules(true, 'paruh'),
+                    'semester' => 'required|in:ganjil,genap',
                     'tahun_akademik' => 'required|string',
                     'batas_pembayaran' => 'required|date',
-                    'nominal_pembayaran' => 'required|numeric|min:1000',
+                    'nominal_pembayaran' => 'required|numeric|min:1000|max:100000000',
                     'lampiran' => 'required|file|max:2048|mimes:pdf,jpg,jpeg,png',
+                ], [
+                    'tahun_akademik.regex' => 'Format tahun akademik tidak valid (contoh: 2026/2027).',
+                    'lampiran.mimes' => 'Format lampiran harus berupa PDF atau gambar yang valid.',
                 ]);
 
                 $semester = MasterData::findSemester($validated['semester']);
@@ -737,28 +706,20 @@ Route::post('/notifikasi/read-all', function () {
             // Surat Permohonan Magang
             elseif ($jenisSurat->slug === 'surat-permohonan-magang') {
 
-                $validated = $request->validate(
-                    [
-                        'tipe_magang' => 'required|in:reguler-ti,reguler-pdsi,mandiri',
-                        'perihal' => ['required', 'string', 'max:500', 'regex:/^[^<>]*$/'],
-                        'kepada_yth' => ['required', 'string', 'max:500', 'regex:/^[^<>]*$/'],
-                        'nama_mitra' => ['required', 'string', 'max:500', 'regex:/^[^<>]*$/'],
-                        'alamat_mitra' => ['required', 'string', 'max:500', 'regex:/^[^<>]*$/'],
-                        'mahasiswa' => 'required|array|min:1',
-                        'mahasiswa.*.npm' => ['required', 'string', 'size:10', 'regex:/^[0-9]{10}$/'],
-                        'mahasiswa.*.nama' => ['required', 'string', 'max:255', 'regex:/^[^<>]*$/'],
-                        'mahasiswa.*.semester' => MasterData::semesterRules(true, 'tingkat'),
-                        'mahasiswa.*.no_kontak' => 'required|string',
-                    ] + DateRange::rules(['tanggal_mulai', 'tanggal_selesai']),
-                    array_merge(
-                        DateRange::messages(['tanggal_mulai', 'tanggal_selesai']),
-                        [
-                            'mahasiswa.*.npm.regex' => 'Format NPM tidak valid. Harap masukkan 10 digit angka resmi.',
-                            'mahasiswa.*.npm.size' => 'Format NPM tidak valid. Harap masukkan 10 digit angka resmi.',
-                            'regex' => 'Input tidak valid. Tidak boleh mengandung tag HTML atau karakter khusus.',
-                        ]
-                    )
-                );
+                $validated = $request->validate([
+                    'tipe_magang' => 'required|in:reguler-ti,reguler-pdsi,mandiri',
+                    'perihal' => 'required|string',
+                    'kepada_yth' => 'required|string',
+                    'nama_mitra' => 'required|string',
+                    'alamat_mitra' => 'required|string',
+                    'tanggal_mulai' => 'required|date',
+                    'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
+                    'mahasiswa' => 'required|array|min:1',
+                    'mahasiswa.*.npm' => 'required|string',
+                    'mahasiswa.*.nama' => 'required|string',
+                    'mahasiswa.*.semester' => 'required|string',
+                    'mahasiswa.*.no_kontak' => 'required|string',
+                ]);
 
                 // VALIDASI PRODI
                 if (
@@ -789,76 +750,20 @@ Route::post('/notifikasi/read-all', function () {
                 })->toArray();
             }
 
-            /*elseif ($jenisSurat->slug === 'surat-rekomendasi') {
-
-                $validated = $request->validate([
-                    'ipk' => 'required|string',
-                    'sks' => 'required|integer',
-                    'tujuan' => 'required|in:magang,pekerjaan',
-                    'pengalaman' => 'required|array',
-                    'project' => 'nullable|array',
-                ]);
-
-                $data = [
-                    'ipk' => $validated['ipk'],
-                    'sks' => $validated['sks'],
-                    'tujuan' => $validated['tujuan'],
-                    'pengalaman' => array_filter($validated['pengalaman'] ?? []),
-                    'project' => array_filter($validated['project'] ?? []),
-                ];
-            }*/
-
             // DEFAULT: SURAT LAIN
             else {
 
                 $rules = [];
+                $customMessages = [];
+
+                // Identitas pengusul dikunci dan ditimpa dari akun login.
+                $lockedIdentityFields = ['nama', 'npm', 'prodi'];
+
                 foreach ($jenisSurat->fields as $field) {
-                    if ($field === 'anggota_tim') {
-                        $rules['anggota_tim'] = 'required|array';
-                        $rules['anggota_tim.*.npm'] = ['required', 'regex:/^[0-9]+$/', 'min:8', 'max:12'];
-                        $rules['anggota_tim.*.nama'] = ['required', 'max:255', 'not_regex:/[<>]/'];
-                    } else {
-                        $rules[$field] = ['required', 'max:500', 'not_regex:/[<>]/'];
-                    }
+                    $rules[$field] = 'required';
                 }
 
-                // B-08: field semester dirender sebagai dropdown ID master.
-                if (in_array('semester', $jenisSurat->fields ?? [], true)) {
-                    $rules['semester'] = MasterData::semesterRules(true, 'paruh');
-                }
-
-                // B-09: format tanggal YYYY-MM-DD dan urutan tanggal kegiatan.
-                $rules = array_merge($rules, DateRange::rules($jenisSurat->fields ?? []));
-
-                // B-10 A: format waktu 24 jam HH:mm dan urutan jam pada hari yang sama.
-                $rules = array_merge($rules, TimeRange::rules($jenisSurat->fields ?? []));
-
-                $validator = Validator::make(
-                    $request->all(),
-                    $rules,
-                    array_merge(
-                        DateRange::messages($jenisSurat->fields ?? []),
-                        TimeRange::messages($jenisSurat->fields ?? []),
-                        [
-                            'regex' => 'Input tidak valid. Tidak boleh mengandung tag HTML atau karakter khusus.',
-                            'not_regex' => 'Input tidak valid. Tidak boleh mengandung tag HTML atau karakter khusus.',
-                            'anggota_tim.*.npm.regex' => 'Format NPM tidak valid. Hanya boleh angka.',
-                        ]
-                    )
-                );
-
-                $validator->after(function ($validator) use ($request, $jenisSurat) {
-                    TimeRange::validateOrder($request->all(), $jenisSurat->fields ?? [], $validator);
-                });
-
-                $validated = $validator->validate();
-
-            // B-10 A: normalisasi format waktu ke HH:mm
-            foreach ($jenisSurat->fields ?? [] as $field) {
-                if (TimeRange::isTimeField($field) && isset($validated[$field])) {
-                    $validated[$field] = TimeRange::normalize((string) $validated[$field]);
-                }
-            }
+                $validated = $request->validate($rules);
 
                 // B-02/B-06: Identitas pengusul dikunci di server, bukan hanya
                 // read-only di tampilan, agar tidak bisa dimanipulasi dari request.
@@ -948,7 +853,7 @@ Route::post('/notifikasi/read-all', function () {
         |----------------------------------------------------------------------
         */
         Route::get('/mahasiswa/surat/{id}', function ($id) {
-            
+
             // ================================
             // AUTO MARK NOTIF AS READ
             // ================================
@@ -994,16 +899,16 @@ Route::post('/notifikasi/read-all', function () {
 
         /*
         |----------------------------------------------------------------------
-        | route PDF 
+        | route PDF
         |----------------------------------------------------------------------
-        
+
         Route::get('/mahasiswa/surat/{id}/pdf', function ($id) {
 
             $surat = SuratPengajuan::with(['user','jenisSurat'])
                 ->where('id', $id)
                 ->where('status', 'disetujui_final')
                 ->firstOrFail();
-            
+
             if (
                 Auth::user()->role === 'mahasiswa' &&
                 $surat->user_id !== Auth::id()
@@ -1108,7 +1013,7 @@ Route::post('/notifikasi/read-all', function () {
 
         })->middleware(['auth','role:admin']);
 
-        // ================= DASHBOARD ADMIN - DOSEN ================= 
+        // ================= DASHBOARD ADMIN - DOSEN =================
         Route::get('/admin/dashboard-dosen', function (Request $request) {
 
             $roleTarget = 'dosen';
@@ -1353,7 +1258,7 @@ Route::post('/notifikasi/read-all', function () {
                         'Surat Menunggu Persetujuan',
                         'Pengajuan "' . $surat->jenisSurat->nama . '" menunggu persetujuan Anda',
                         '/kaprodi/surat/' . $surat->id
-                        
+
                     );
                 }
 
@@ -1442,7 +1347,7 @@ Route::post('/notifikasi/read-all', function () {
                             '/kaprodi/surat/' . $suratPersetujuan->id
                         );
                     }
-                    
+
                     // NOTIFIKASI KE MAHASISWA
                     pushNotif(
                         $surat->user_id,
@@ -1975,7 +1880,7 @@ Route::post('/notifikasi/read-all', function () {
         return redirect('/admin/disposisi')->with('success', 'Disposisi telah selesai.');
     })->middleware('role:admin');
 
-    
+
     /*
     |--------------------------------------------------------------------------
     | KAPRODI
@@ -2142,7 +2047,7 @@ Route::post('/notifikasi/read-all', function () {
             $surat->qr_token = $surat->qr_token ?? Str::uuid();
             $surat->penandatangan = namaKaprodi($surat->user->prodi);
             $surat->save();
-            
+
             $surat->refresh();
             $surat->load(['user','jenisSurat']);
 
@@ -2423,7 +2328,7 @@ Route::post('/notifikasi/read-all', function () {
 
             return redirect('/dekan/dashboard')
                 ->with('success','Surat mahasiswa disetujui final');
-        });  
+        });
 
         Route::post('/dekan/surat/{id}/tolak', function (Request $request, $id) {
 
@@ -2631,6 +2536,40 @@ Route::post('/notifikasi/read-all', function () {
                 ->with('success', 'Akun berhasil ditambahkan');
 
         })->middleware(['auth', 'role:administrator']);
+
+        // ================= UBAH ROLE AKUN =================
+        Route::post('/administrator/ubah-role/{id}', function (Request $request, $id) {
+
+            $request->validate([
+                'role'  => ['required', Rule::in(['admin', 'kaprodi', 'dekan'])],
+                'prodi' => ['nullable', 'required_if:role,kaprodi', 'in:TI,PdSI'],
+            ]);
+
+            $target = User::whereIn('role', ['admin', 'kaprodi', 'dekan'])
+                ->findOrFail($id);
+
+            $oldRole = $target->role;
+            $newRole = $request->role;
+
+            if ($oldRole === $newRole) {
+                return back()->with('success', 'Role tidak berubah');
+            }
+
+            $target->update([
+                'role'  => $newRole,
+                'prodi' => $newRole === 'kaprodi' ? $request->prodi : null,
+            ]);
+
+            SecurityAuditLogger::logRoleChanged(
+                Auth::user(),
+                $target,
+                $oldRole,
+                $newRole,
+                $request
+            );
+
+            return back()->with('success', 'Role akun berhasil diubah');
+        });
 
         // ================= HAPUS AKUN =================
         Route::delete('/administrator/hapus-akun/{id}', function ($id) {

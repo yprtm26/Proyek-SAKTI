@@ -22,18 +22,13 @@
 
     $user = auth()->user();
 
-    $roleTitle = match($user->role) {
-        'admin'         => 'Admin TU',
-        'administrator' => 'Administrator',
-        'kaprodi'       => 'Kepala Prodi',
-        'dekan'         => 'Dekan',
-        'dosen'         => 'Dosen',
-        default         => 'Mahasiswa',
-    };
-
-    $subTitle = match($user->role) {
-        'kaprodi', 'mahasiswa' => namaProdi($user->prodi),
-        default                => 'Fakultas Teknologi Informasi',
+    $titleRole = match($user->role) {
+            'admin'   => 'Admin TU<br>Fakultas Teknologi Informasi',
+            'administrator'   => 'Administrator<br>Fakultas Teknologi Informasi',
+            'kaprodi' => 'Kepala Prodi<br>' . namaProdi($user->prodi),
+            'dekan'   => 'Dekan<br>Fakultas Teknologi Informasi',
+            'dosen'   => 'Dosen<br>Fakultas Teknologi Informasi',
+             default   => 'Mahasiswa<br>' . namaProdi($user->prodi)
     };
 @endphp
 
