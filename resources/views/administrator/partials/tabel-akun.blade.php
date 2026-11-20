@@ -37,27 +37,6 @@
                 </td>
 
                 <td class="px-4 py-3 text-center">
-                    <form method="POST"
-                          action="/administrator/ubah-role/{{ $user->id }}"
-                          class="flex flex-col gap-1 mb-2">
-                        @csrf
-                        <select name="role"
-                                class="border rounded px-2 py-1 text-xs">
-                            <option value="admin" {{ $user->role === 'admin' ? 'selected' : '' }}>Admin</option>
-                            <option value="kaprodi" {{ $user->role === 'kaprodi' ? 'selected' : '' }}>Kaprodi</option>
-                            <option value="dekan" {{ $user->role === 'dekan' ? 'selected' : '' }}>Dekan</option>
-                        </select>
-                        <select name="prodi"
-                                class="border rounded px-2 py-1 text-xs">
-                            <option value="">Prodi (jika Kaprodi)</option>
-                            <option value="TI" {{ $user->prodi === 'TI' ? 'selected' : '' }}>TI</option>
-                            <option value="PdSI" {{ $user->prodi === 'PdSI' ? 'selected' : '' }}>PdSI</option>
-                        </select>
-                        <button class="bg-amber-100 text-amber-800 hover:bg-amber-200 px-3 py-1 rounded text-xs font-semibold">
-                            Ubah Role
-                        </button>
-                    </form>
-
                     <form method="POST" action="/administrator/hapus-akun/{{ $user->id }}">
                         @csrf
                         @method('DELETE')

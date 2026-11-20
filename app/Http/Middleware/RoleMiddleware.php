@@ -3,9 +3,9 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
-use App\Services\SecurityAuditLogger;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class RoleMiddleware
@@ -34,16 +34,20 @@ class RoleMiddleware
 
         // Role user tidak termasuk role yang diizinkan.
         if (! $user instanceof User || ! $user->hasAnyRole($roles)) {
-            if ($request->expectsJson()) {
-                SecurityAuditLogger::logAccessDenied($user, $request, $request->fullUrl());
+            Log::warning('Akses role ditolak', [
+                'user_id' => $user->getAuthIdentifier(),
+                'role' => $user->role ?? null,
+                'allowed_roles' => $roles,
+                'method' => $request->method(),
+                'url' => $request->fullUrl(),
+            ]);
 
+            if ($request->expectsJson()) {
                 return response()->json([
                     'message' => 'Anda tidak memiliki akses ke halaman ini.',
                 ], 403);
             }
 
-            // Untuk HTML, audit 403 dilakukan terpusat di bootstrap/app.php
-            // agar 403 dari policy/controller juga tercatat.
             abort(403, 'ANDA TIDAK MEMILIKI AKSES');
         }
 
