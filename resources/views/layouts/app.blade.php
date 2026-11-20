@@ -19,10 +19,10 @@
     $titleRole = match($user->role) {
             'admin'   => 'Admin TU<br>Fakultas Teknologi Informasi',
             'administrator'   => 'Administrator<br>Fakultas Teknologi Informasi',
-            'kaprodi' => 'Kepala Prodi<br>' . namaProdi($user->prodi),
+            'kaprodi' => 'Kepala Prodi<br>' . e(namaProdi($user->prodi)),
             'dekan'   => 'Dekan<br>Fakultas Teknologi Informasi',
             'dosen'   => 'Dosen<br>Fakultas Teknologi Informasi',
-             default   => 'Mahasiswa<br>' . namaProdi($user->prodi)
+             default   => 'Mahasiswa<br>' . e(namaProdi($user->prodi))
     };
 @endphp
 

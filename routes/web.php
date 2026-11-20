@@ -321,13 +321,25 @@ Route::post('/notifikasi/read-all', function () {
                 ->untukPengguna('dosen')
                 ->findOrFail($id);
 
-            // VALIDASI DINAMIS
+            // VALIDASI DINAMIS & ALLOWLIST (MODE A)
             $rules = [];
+            $customMessages = [];
             foreach ($jenisSurat->fields as $field) {
-                $rules[$field] = 'required';
+                if (in_array($field, ['nidn', 'no_nip', 'npm'])) {
+                    $rules[$field] = ['required', 'string', 'regex:/^[0-9]{8,18}$/'];
+                    $customMessages[$field . '.regex'] = 'Nomor identitas harus berupa digit angka yang valid.';
+                } elseif (str_contains($field, 'tanggal')) {
+                    $rules[$field] = ['required', 'date'];
+                } else {
+                    $rules[$field] = ['required', 'string', 'max:500'];
+                }
             }
 
-            $validated = $request->validate($rules);
+            if ($request->has('anggota') && is_array($request->anggota)) {
+                $rules['anggota.*.nidn'] = ['nullable', 'string', 'regex:/^[0-9]{8,18}$/'];
+            }
+
+            $validated = $request->validate($rules, $customMessages);
 
             // B-02: Kunci identitas utama agar tidak bisa dimanipulasi dari request
             if (isset($validated['nama_dosen'])) {
@@ -509,10 +521,13 @@ Route::post('/notifikasi/read-all', function () {
 
                 $request->validate([
                     'mahasiswa' => 'required|array|min:1',
-                    'mahasiswa.*.nama' => 'required|string',
-                    'mahasiswa.*.npm' => 'required|string',
+                    'mahasiswa.*.nama' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\s\.\,\'\-]+$/'],
+                    'mahasiswa.*.npm' => ['required', 'string', 'regex:/^[0-9]{8,12}$/'],
                     'mahasiswa.*.mata_kuliah' => 'required|array|min:1',
-                    'mahasiswa.*.mata_kuliah.*' => 'string',
+                    'mahasiswa.*.mata_kuliah.*' => 'string|max:100',
+                ], [
+                    'mahasiswa.*.npm.regex' => 'Format NPM tidak valid (harus berupa 8-12 digit angka).',
+                    'mahasiswa.*.nama.regex' => 'Format nama mahasiswa tidak valid.',
                 ]);
 
                 $data = [
@@ -531,10 +546,13 @@ Route::post('/notifikasi/read-all', function () {
 
                 $validated = $request->validate([
                     'semester' => 'required|in:ganjil,genap',
-                    'tahun_akademik' => 'required|string',
+                    'tahun_akademik' => 'required|string|regex:/^[0-9]{4}\/[0-9]{4}$/',
                     'batas_pembayaran' => 'required|date',
-                    'nominal_pembayaran' => 'required|numeric|min:1000',
+                    'nominal_pembayaran' => 'required|numeric|min:1000|max:100000000',
                     'lampiran' => 'required|file|max:2048|mimes:pdf,jpg,jpeg,png',
+                ], [
+                    'tahun_akademik.regex' => 'Format tahun akademik tidak valid (contoh: 2026/2027).',
+                    'lampiran.mimes' => 'Format lampiran harus berupa PDF atau gambar yang valid.',
                 ]);
 
                 $data = [
@@ -550,17 +568,20 @@ Route::post('/notifikasi/read-all', function () {
 
                 $validated = $request->validate([
                     'tipe_magang' => 'required|in:reguler-ti,reguler-pdsi,mandiri',
-                    'perihal' => 'required|string',
-                    'kepada_yth' => 'required|string',
-                    'nama_mitra' => 'required|string',
-                    'alamat_mitra' => 'required|string',
+                    'perihal' => 'required|string|max:255',
+                    'kepada_yth' => 'required|string|max:255',
+                    'nama_mitra' => 'required|string|max:255',
+                    'alamat_mitra' => 'required|string|max:500',
                     'tanggal_mulai' => 'required|date',
                     'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
                     'mahasiswa' => 'required|array|min:1',
-                    'mahasiswa.*.npm' => 'required|string',
-                    'mahasiswa.*.nama' => 'required|string',
-                    'mahasiswa.*.semester' => 'required|string',
-                    'mahasiswa.*.no_kontak' => 'required|string',
+                    'mahasiswa.*.npm' => ['required', 'string', 'regex:/^[0-9]{8,12}$/'],
+                    'mahasiswa.*.nama' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z\s\.\,\'\-]+$/'],
+                    'mahasiswa.*.semester' => 'required|string|max:20',
+                    'mahasiswa.*.no_kontak' => 'required|string|max:25',
+                ], [
+                    'mahasiswa.*.npm.regex' => 'Format NPM tidak valid (harus berupa 8-12 digit angka).',
+                    'mahasiswa.*.nama.regex' => 'Format nama mahasiswa tidak valid.',
                 ]);
 
                 // VALIDASI PRODI
@@ -587,34 +608,34 @@ Route::post('/notifikasi/read-all', function () {
                 })->toArray();
             }
 
-            /*elseif ($jenisSurat->slug === 'surat-rekomendasi') {
-
-                $validated = $request->validate([
-                    'ipk' => 'required|string',
-                    'sks' => 'required|integer',
-                    'tujuan' => 'required|in:magang,pekerjaan',
-                    'pengalaman' => 'required|array',
-                    'project' => 'nullable|array',
-                ]);
-
-                $data = [
-                    'ipk' => $validated['ipk'],
-                    'sks' => $validated['sks'],
-                    'tujuan' => $validated['tujuan'],
-                    'pengalaman' => array_filter($validated['pengalaman'] ?? []),
-                    'project' => array_filter($validated['project'] ?? []),
-                ];
-            }*/
-
             // DEFAULT: SURAT LAIN
             else {
 
                 $rules = [];
+                $customMessages = [];
                 foreach ($jenisSurat->fields as $field) {
-                    $rules[$field] = 'required';
+                    if ($field === 'npm' || str_ends_with($field, '_npm')) {
+                        $rules[$field] = ['required', 'string', 'regex:/^[0-9]{8,12}$/'];
+                        $customMessages[$field . '.regex'] = 'Format NPM tidak valid (harus berupa 8-12 digit angka).';
+                    } elseif ($field === 'nidn' || str_ends_with($field, '_nidn')) {
+                        $rules[$field] = ['required', 'string', 'regex:/^[0-9]{8,12}$/'];
+                        $customMessages[$field . '.regex'] = 'Format NIDN tidak valid (harus berupa 8-12 digit angka).';
+                    } elseif (in_array($field, ['tanggal_mulai', 'tanggal_selesai', 'tanggal_kegiatan', 'tanggal'])) {
+                        $rules[$field] = ['required', 'date'];
+                    } elseif ($field === 'lampiran') {
+                        $rules[$field] = ['required', 'file', 'mimes:pdf', 'max:2048'];
+                        $customMessages[$field . '.mimes'] = 'Lampiran harus berupa dokumen PDF.';
+                    } else {
+                        $rules[$field] = ['required', 'string', 'max:500'];
+                    }
                 }
 
-                $validated = $request->validate($rules);
+                if ($request->has('anggota_tim') && is_array($request->anggota_tim)) {
+                    $rules['anggota_tim.*.npm'] = ['required', 'string', 'regex:/^[0-9]{8,12}$/'];
+                    $customMessages['anggota_tim.*.npm.regex'] = 'Format NPM anggota tim tidak valid (harus berupa 8-12 digit angka).';
+                }
+
+                $validated = $request->validate($rules, $customMessages);
 
                 // B-02/B-06: Identitas pengusul dikunci di server, bukan hanya
                 // read-only di tampilan, agar tidak bisa dimanipulasi dari request.
