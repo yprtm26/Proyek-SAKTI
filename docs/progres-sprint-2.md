@@ -14,7 +14,7 @@
 | **B-08** | Input prodi, semester, dan dosen melalui dropdown | **Belum dikerjakan** | Dropdown searchable teraksesibel (Tab/Enter/Esc) & validasi 422 di server. |
 | **B-09** | Pemilihan tanggal awal dan akhir kegiatan (date picker) | **Belum dikerjakan** | Date picker visual & format `YYYY-MM-DD`, validasi tanggal selesai $\ge$ tanggal mulai. |
 | **B-10 A** | Pemilihan waktu mulai dan selesai kegiatan (time picker) | **Belum dikerjakan** | Mask format 24 jam (`HH:mm`), validasi jam selesai $>$ mulai pada hari yang sama. |
-| **B-10 B** | Pengisian daftar anggota dan peran dalam kegiatan | **Belum dikerjakan** | Dynamic input row anggota, target klik $\ge 44 \times 44\text{px}$, validasi baris kosong. |
+| **B-10 B** | Pengisian daftar anggota dan peran dalam kegiatan | **Selesai** | Dynamic input row anggota, target klik $\ge 44 \times 44\text{px}$, validasi baris kosong, bulk save ke `surat_personel`. Test lolos (5 tests, 12 assertions). |
 | **B-13 A** | Penyimpanan pengajuan surat sebagai draf | **Belum dikerjakan** | Status 'Draf' di DB, isolasi dari antrean TU, validasi wajib template. |
 | **B-13 B** | Pembukaan dan pengubahan draf surat milik pengusul | **Belum dikerjakan** | Halaman edit draf, aksi kirim pengajuan, proteksi 403 IDOR lintas akun. |
 | **B-14** | Penghapusan permanen draf pengajuan surat | **Belum dikerjakan** | Fitur hapus draf mandiri oleh pengusul. |
@@ -109,13 +109,25 @@
 ---
 
 ### 6. [B-10 B] Pengisian daftar anggota dan peran dalam kegiatan
-* **Status:** Belum dikerjakan (Product Backlog Sprint 2)
+* **Status:** Selesai (100% — Siap dipindahkan ke Review/Done)
 * **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
-  - [ ] 1. Rancang antarmuka tabel dinamis tambah/hapus anggota kegiatan (UI/UX)
-  - [ ] 2. Tabel relasi personel surat dan endpoint simpan bulk anggota (Backend)
-  - [ ] 3. Komponen dynamic input row anggota di form pengajuan (Front-end)
-  - [ ] 4. Uji validasi baris anggota kosong dan keteroperasian keyboard (Pengujian)
+  - [x] 1. Rancang antarmuka tabel dinamis tambah/hapus anggota kegiatan (Josua Rajak) (UI/UX) (`resources/views/surat/partials/tabel-personel.blade.php`)
+  - [x] 2. Tabel relasi personel surat dan endpoint simpan bulk anggota (Yuga Pratama Andika Syaputra) (Backend) (`database/migrations/2026_11_23_000001_create_surat_personel_table.php`, `app/Models/SuratPersonel.php`, `routes/web.php`)
+  - [x] 3. Komponen dynamic input row anggota di form pengajuan (Josua Rajak) (Front-end) (`resources/views/dosen/surat/form/surat-tugas-kegiatan-kuliah.blade.php`, `resources/views/surat/form-dinamis.blade.php`)
+  - [x] 4. Uji validasi baris anggota kosong dan keteroperasian keyboard (Arman Dava Wicaksono) (Pengujian) (`tests/Feature/PengisianAnggotaKegiatanB10BTest.php`)
+* **Bukti Pengujian:**
+  ```text
+  php artisan test tests/Feature/PengisianAnggotaKegiatanB10BTest.php
+  PASS  Tests\Feature\PengisianAnggotaKegiatanB10BTest
+  ✓ pengusul dapat mengajukan surat dengan daftar anggota secara bulk
+  ✓ sistem memblokir submit jika ada baris anggota yang namanya kosong
+  ✓ sistem memblokir submit jika ada baris anggota yang perannya kosong
+  ✓ komponen view tabel personel memenuhi standar aksesibilitas
+  ✓ api bulk personel berhasil dan dilindungi anti idor
+  Tests: 5 passed (14 assertions)
+  ```
+* **Dokumentasi Terkait:** `docs/progres-b-10b.md`
 
 ---
 

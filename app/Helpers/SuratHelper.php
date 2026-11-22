@@ -118,6 +118,62 @@ if (!function_exists('labelFieldSurat')) {
     }
 }
 
+if (!function_exists('personelSurat')) {
+    /**
+     * B-10 B: ambil daftar personel surat dari tabel relasi.
+     *
+     * Surat lama (sebelum B-10 B) masih menyimpan anggota di kolom JSON
+     * `data`, sehingga dipakai sebagai fallback agar dokumen lama tetap
+     * dapat ditampilkan dan dicetak.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    function personelSurat($surat)
+    {
+        $personel = $surat->personel ?? collect();
+
+        if ($personel->isNotEmpty()) {
+            return $personel->map(fn ($p) => [
+                'nama' => $p->nama,
+                'peran' => $p->peran,
+                'instansi' => $p->instansi,
+            ])->all();
+        }
+
+        $data = $surat->data ?? [];
+
+        if (! empty($data['anggota']) && is_array($data['anggota'])) {
+            return array_values($data['anggota']);
+        }
+
+        if (! empty($data['anggota_tim']) && is_array($data['anggota_tim'])) {
+            return array_values($data['anggota_tim']);
+        }
+
+        return [];
+    }
+}
+
+if (!function_exists('peranPersonel')) {
+    /**
+     * Label peran personel, kompatibel dengan data lama (`keterangan`).
+     */
+    function peranPersonel($personel)
+    {
+        return $personel['peran'] ?? $personel['keterangan'] ?? '-';
+    }
+}
+
+if (!function_exists('identitasPersonel')) {
+    /**
+     * Identitas personel (instansi/NIM/NIDN), kompatibel dengan data lama.
+     */
+    function identitasPersonel($personel)
+    {
+        return $personel['instansi'] ?? $personel['npm'] ?? $personel['nidn'] ?? '-';
+    }
+}
+
 if (!function_exists('tipeFieldSurat')) {
     /**
      * Tebak tipe input yang tepat dari nama field template.

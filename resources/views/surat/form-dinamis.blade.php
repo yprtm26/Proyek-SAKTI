@@ -128,6 +128,11 @@
             </p>
         @endforelse
 
+        {{-- B-10 B: TABEL DINAMIS PERSONEL / ANGGOTA KEGIATAN --}}
+        @if(in_array('anggota', $fields, true) || in_array('personel', $fields, true) || in_array('anggota_tim', $fields, true) || str_contains(strtolower($jenisSurat->nama), 'kegiatan') || str_contains(strtolower($jenisSurat->nama), 'tugas'))
+            @include('surat.partials.tabel-personel')
+        @endif
+
         {{-- AKSI --}}
         <div class="flex justify-end gap-3 pt-4">
             <a href="{{ $kembaliUrl }}"

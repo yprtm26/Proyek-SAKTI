@@ -43,6 +43,15 @@ class SuratPengajuan extends Model
     return $this->hasMany(SuratLampiran::class, 'surat_pengajuan_id');
     }
 
+    /**
+     * B-10 B: daftar anggota/personel kegiatan pada surat ini.
+     */
+    public function personel()
+    {
+        return $this->hasMany(SuratPersonel::class, 'surat_pengajuan_id')
+            ->orderBy('urutan');
+    }
+
     public function parent()
     {
         return $this->belongsTo(SuratPengajuan::class, 'parent_id');

@@ -170,6 +170,9 @@
                    required>
         </div>
 
+        {{-- B-10 B: TABEL DINAMIS PERSONEL / ANGGOTA KEGIATAN --}}
+        @include('surat.partials.tabel-personel')
+
         {{-- ACTION --}}
         <div class="flex justify-end gap-3 pt-4">
             <button type="submit"
