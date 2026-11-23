@@ -45,6 +45,9 @@
           class="bg-white shadow rounded-lg p-6 space-y-5">
         @csrf
 
+
+        <input type="hidden" name="jenis_surat_id" value="{{ $jenisSurat->id }}">
+
         {{-- IDENTITAS PENGUSUL (TERKUNCI) --}}
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-5">
             <div>
@@ -171,15 +174,30 @@
         @endforelse
 
         {{-- AKSI --}}
-        <div class="flex justify-end gap-3 pt-4">
+        <div class="flex flex-wrap justify-end gap-3 pt-4 border-t">
             <a href="{{ $kembaliUrl }}"
-               class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700">
+               class="min-h-[44px] px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium inline-flex items-center justify-center transition-colors">
                 Kembali
             </a>
 
+            {{-- B-13 A: TOMBOL SIMPAN DRAF --}}
             <button type="submit"
-                    class="px-5 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold">
-                Ajukan Surat
+                    name="action"
+                    value="draft"
+                    formaction="{{ url('/surat/draf') }}"
+                    formnovalidate
+                    class="btn-simpan-draf min-h-[44px] px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+                <span>Simpan Draf</span>
+            </button>
+
+            <button type="submit"
+                    name="action"
+                    value="submit"
+                    class="min-h-[44px] px-5 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 inline-flex items-center gap-2">
+                <span>Ajukan Surat</span>
             </button>
         </div>
     </form>

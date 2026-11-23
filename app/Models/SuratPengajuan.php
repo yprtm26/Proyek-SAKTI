@@ -58,4 +58,27 @@ class SuratPengajuan extends Model
         return $this->hasMany(Disposisi::class, 'surat_id');
     }
 
+    /**
+     * B-13 A: Scope untuk menyaring surat yang BUKAN berstatus draf (antrean publik / verifikasi TU).
+     */
+    public function scopeBukanDraf($query)
+    {
+        return $query->where('status', '!=', 'draf');
+    }
+
+    /**
+     * B-13 A: Scope untuk menyaring surat yang berstatus draf.
+     */
+    public function scopeDraf($query)
+    {
+        return $query->where('status', 'draf');
+    }
+
+    /**
+     * B-13 A: Periksa apakah surat ini berstatus draf.
+     */
+    public function isDraf(): bool
+    {
+        return $this->status === 'draf';
+    }
 }

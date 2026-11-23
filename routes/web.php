@@ -119,8 +119,108 @@ Route::get('/api/me', function () {
 
 /*
 |--------------------------------------------------------------------------
-| API MASTER DATA DROPDOWN (B-08)
+| B-13 A: SIMPAN PENGAJUAN SEBAGAI DRAF (ISIAN PARSIAL)
 |--------------------------------------------------------------------------
+| Draft boleh disimpan dengan field yang belum lengkap, tetapi:
+|  - template surat wajib dipilih (validasi ditolak bila tidak ada),
+|  - identitas pengusul tetap dikunci dari akun yang login,
+|  - status langsung 'draf' sehingga tidak masuk antrean Admin TU
+|    dan tidak memicu notifikasi ke admin.
+*/
+Route::post('/surat/draf', function (Request $request) {
+
+    $user = Auth::user();
+    $targetUser = $user->role === 'dosen' ? 'dosen' : 'mahasiswa';
+
+    $validasi = $request->validate([
+        'jenis_surat_id' => ['required', 'integer'],
+    ], [
+        'jenis_surat_id.required' => 'Template surat belum dipilih. Silakan pilih jenis surat terlebih dahulu.',
+    ]);
+
+    // B-06/B-13 A: tolak template nonaktif / bukan milik role pengusul.
+    $jenisSurat = JenisSurat::aktif()
+        ->untukPengguna($targetUser)
+        ->find($validasi['jenis_surat_id']);
+
+    if (! $jenisSurat) {
+        return back()->withInput()->withErrors([
+            'jenis_surat_id' => 'Template surat tidak valid atau tidak aktif untuk akun Anda.',
+        ]);
+    }
+
+    // Hanya field yang dikenal template (plus field form lama) yang disimpan.
+    $fieldDiizinkan = array_values(array_unique(array_merge(
+        (array) ($jenisSurat->fields ?? []),
+        ['mahasiswa', 'anggota', 'anggota_tim', 'personel', 'label_lampiran']
+    )));
+
+    // B-02: identitas pengusul tidak boleh dipercaya dari request.
+    $identitasTerkunci = [
+        'nama'            => $user->name,
+        'nama_dosen'      => $user->name,
+        'nama_ditugaskan' => $user->name,
+        'npm'             => $user->npm,
+        'nidn'            => $user->nidn,
+        'no_nip'          => $user->nidn,
+        'prodi'           => $user->prodi,
+    ];
+
+    $dataDraf = [];
+
+    foreach ($fieldDiizinkan as $field) {
+        if (! $request->exists($field)) {
+            continue;
+        }
+
+        $nilai = $request->input($field);
+
+        if (is_array($nilai)) {
+            $nilai = array_map(function ($item) {
+                if (is_array($item)) {
+                    return array_map(fn ($v) => is_scalar($v)
+                        ? mb_substr(strip_tags((string) $v), 0, 500)
+                        : null, $item);
+                }
+
+                return is_scalar($item) ? mb_substr(strip_tags((string) $item), 0, 500) : null;
+            }, $nilai);
+        } else {
+            $nilai = mb_substr(strip_tags((string) $nilai), 0, 500);
+        }
+
+        $dataDraf[$field] = array_key_exists($field, $identitasTerkunci)
+            ? $identitasTerkunci[$field]
+            : $nilai;
+    }
+
+    // Pastikan identitas pengusul ikut tersimpan walau tidak dikirim form.
+    foreach ($identitasTerkunci as $field => $nilai) {
+        if (in_array($field, $fieldDiizinkan, true)) {
+            $dataDraf[$field] = $nilai;
+        }
+    }
+
+    $draf = SuratPengajuan::create([
+        'user_id'        => Auth::id(),
+        'jenis_surat_id' => $jenisSurat->id,
+        'data'           => $dataDraf,
+        'status'         => 'draf',
+    ]);
+
+    if ($request->expectsJson()) {
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Draf berhasil disimpan.',
+            'data'    => ['id' => $draf->id, 'status' => $draf->status],
+        ], 201);
+    }
+
+    return back()->with('success', 'Draf berhasil disimpan. Anda dapat melanjutkan pengisian nanti.');
+})->middleware('role:mahasiswa,dosen')->name('surat.draf.store');
+
+/*
+
 | Semua endpoint hanya mengembalikan data master yang aktif sehingga
 | dropdown tidak pernah menampilkan pilihan yang tidak valid.
 */
@@ -433,7 +533,7 @@ Route::post('/notifikasi/read-all', function () {
         */
         Route::post('/dosen/surat/ajukan/{id}', function (Request $request, $id) {
 
-            // B-06: tolak pengajuan ke template nonaktif / milik role lain.
+            // tolak pengajuan ke template nonaktif / milik role lain.
             $jenisSurat = JenisSurat::aktif()
                 ->untukPengguna('dosen')
                 ->findOrFail($id);
@@ -453,7 +553,7 @@ Route::post('/notifikasi/read-all', function () {
 
             $validated = $request->validate($rules);
 
-            // B-02: Kunci identitas utama agar tidak bisa dimanipulasi dari request
+            // Kunci identitas utama agar tidak bisa dimanipulasi dari request
             if (isset($validated['nama_dosen'])) {
                 $validated['nama_dosen'] = Auth::user()->name;
             }
@@ -467,7 +567,7 @@ Route::post('/notifikasi/read-all', function () {
                 $validated['prodi'] = Auth::user()->prodi;
             }
 
-            // B-08: simpan label master agar dokumen tetap terbaca.
+            // simpan label master agar dokumen tetap terbaca.
             if (array_key_exists('prodi_id', $validated)) {
                 $prodi = MasterData::findProdi($validated['prodi_id']);
                 if ($prodi) {
@@ -627,7 +727,7 @@ Route::post('/notifikasi/read-all', function () {
 
         Route::get('/mahasiswa/surat/ajukan/{id}', function ($id) {
 
-            // B-06: template nonaktif / milik role lain tidak boleh dipakai.
+            // template nonaktif / milik role lain tidak boleh dipakai.
             $jenisSurat = JenisSurat::aktif()
                 ->untukPengguna('mahasiswa')
                 ->findOrFail($id);
@@ -651,7 +751,7 @@ Route::post('/notifikasi/read-all', function () {
         //SIMPAN PENGAJUAN SURAT
         Route::post('/mahasiswa/surat/ajukan/{id}', function (Request $request, $id) {
 
-            // B-06: tolak pengajuan ke template nonaktif / milik role lain.
+            // tolak pengajuan ke template nonaktif / milik role lain.
             $jenisSurat = JenisSurat::aktif()
                 ->untukPengguna('mahasiswa')
                 ->findOrFail($id);
@@ -765,7 +865,7 @@ Route::post('/notifikasi/read-all', function () {
 
                 $validated = $request->validate($rules);
 
-                // B-02/B-06: Identitas pengusul dikunci di server, bukan hanya
+                // Identitas pengusul dikunci di server, bukan hanya
                 // read-only di tampilan, agar tidak bisa dimanipulasi dari request.
                 if (array_key_exists('nama', $validated)) {
                     $validated['nama'] = Auth::user()->name;
@@ -777,7 +877,7 @@ Route::post('/notifikasi/read-all', function () {
                     $validated['prodi'] = Auth::user()->prodi;
                 }
 
-                // B-08: simpan label semester agar dokumen tetap terbaca.
+                // simpan label semester agar dokumen tetap terbaca.
                 if (array_key_exists('semester', $validated)) {
                     $semester = MasterData::findSemester($validated['semester']);
                     if ($semester) {
@@ -786,7 +886,7 @@ Route::post('/notifikasi/read-all', function () {
                     }
                 }
 
-                // B-02: Kunci pemohon pertama pada anggota tim
+                // Kunci pemohon pertama pada anggota tim
                 if (isset($validated['anggota_tim']) && is_array($validated['anggota_tim'])) {
                     $firstApplicant = array_key_first($validated['anggota_tim']);
                     if ($firstApplicant !== null) {
@@ -1221,6 +1321,11 @@ Route::post('/notifikasi/read-all', function () {
                 ->update(['is_read'=>true,'read_at'=>now()]);
 
             $surat = SuratPengajuan::with(['user','jenisSurat'])->findOrFail($id);
+
+            // Surat berstatus draf tidak boleh diakses oleh Admin TU
+            if ($surat->status === 'draf') {
+                abort(404, 'Surat masih berstatus draf oleh pengusul.');
+            }
             /*if (!$surat->qr_token) {
                 $surat->update([
                     'qr_token' => Str::uuid(),
@@ -1383,6 +1488,11 @@ Route::post('/notifikasi/read-all', function () {
 
             $surat = SuratPengajuan::with(['user','jenisSurat'])->findOrFail($id);
 
+            // Surat berstatus draf tidak boleh diakses oleh Admin TU
+            if ($surat->status === 'draf') {
+                abort(404, 'Surat masih berstatus draf oleh pengusul.');
+            }
+
             if ($surat->status !== 'menunggu_admin_final') {
                 return redirect('/admin/dashboard');
             }
@@ -1496,7 +1606,8 @@ Route::post('/notifikasi/read-all', function () {
 
         Route::get('/admin/surat', function (Request $request) {
 
-            $query = SuratPengajuan::with(['user','jenisSurat']);
+            // Draf tidak boleh ditampilkan di arsip dan antrean verifikasi Admin TU
+            $query = SuratPengajuan::with(['user','jenisSurat'])->bukanDraf();
 
             // SEARCH
             if ($request->q) {
@@ -2279,6 +2390,11 @@ Route::post('/notifikasi/read-all', function () {
         Route::post('/dekan/surat/{id}/setujui', function ($id) {
 
             $surat = SuratPengajuan::with(['user','jenisSurat'])->findOrFail($id);
+
+            // Surat berstatus draf tidak boleh diakses oleh Admin TU
+            if ($surat->status === 'draf') {
+                abort(404, 'Surat masih berstatus draf oleh pengusul.');
+            }
 
             if ($surat->status !== 'menunggu_dekan') {
                 return redirect('/dekan/dashboard');
