@@ -15,7 +15,7 @@ Fitur ini memungkinkan pengusul surat tugas atau kegiatan di SAKTI untuk menginp
 
 - [x] **1. Rancang antarmuka tabel dinamis tambah/hapus anggota kegiatan (Josua Rajak) (UI/UX)**
   - Dibuat komponen tabel terstruktur dengan kolom: No, Nama Lengkap, Peran dalam Kegiatan, Instansi/NIM/NIDN, dan Aksi.
-  - Baris pertama otomatis terisi data pengusul (Ketua / Penanggung Jawab) sebagai baris utama.
+  - Baris pertama otomatis terisi data pengusul dengan peran default sesuai jenis surat (mis. Ketua / Penanggung Jawab, Penulis, atau Pemohon) sebagai baris utama.
   - Tombol Tambah Anggota dan Tombol Hapus Baris memenuhi standar ukuran sentuh minimal $44 \times 44\text{px}$ (`min-h-[44px] min-w-[44px]`).
   - Indikator fokus (*focus ring*) memiliki rasio kontras $\ge 3:1$ terhadap latar belakang (`focus:ring-2 focus:ring-offset-2 focus:ring-blue-600` dan `focus:ring-red-600`).
 
@@ -40,22 +40,39 @@ Fitur ini memungkinkan pengusul surat tugas atau kegiatan di SAKTI untuk menginp
     - Auto-focus: setelah baris baru dibuat, fokus kursor otomatis berpindah ke kolom input Nama baru.
     - Validasi submit: form otomatis diblokir di sisi browser dan menampilkan kotak peringatan jika ada baris anggota yang kolom Nama atau Perannya dibiarkan kosong.
   - Komponen disematkan pada:
-    - Form dinamis template kegiatan: `resources/views/surat/form-dinamis.blade.php`.
-    - Form khusus tugas dosen: `resources/views/dosen/surat/form/surat-tugas-kegiatan-kuliah.blade.php`.
+    - Form dinamis template: `resources/views/surat/form-dinamis.blade.php`.
+    - Form khusus tugas dosen: `surat-tugas-kegiatan-kuliah`, `surat-tugas-pendaftaran-hak-kekayaan-intelektual`, `surat-tugas-penulisan-buku-ajar`, dan `surat-tugas-penulisan-dan-publikasi-penelitian`.
+    - Form khusus mahasiswa: `surat-observasi-tugas-mata-kuliah`.
 
-- [x] **4. Uji validasi baris anggota kosong dan keteroperasian keyboard (Arman Dava Wicaksono) (Pengujian)**
-  - Berkas pengujian otomatis: `tests/Feature/PengisianAnggotaKegiatanB10BTest.php` (5 test cases komprehensif).
+- [x] **4. Integrasi penyimpanan, preview, dan PDF (Yuga Pratama / Josua Rajak)**
+  - Seluruh form menyimpan baris personel melalui `PersonelSuratService::sync()` (hapus + `createMany` dalam transaksi).
+  - Baris pertama selalu dikunci sebagai pengusul: nama diambil dari akun, dan NPM dikunci untuk mahasiswa.
+  - Data personel tidak lagi disimpan di kolom JSON `data`; surat lama tetap terbaca melalui fallback `personelSurat()`.
+  - Preview dan PDF dosen/mahasiswa membaca `personelSurat()`, `peranPersonel()`, dan `identitasPersonel()`.
+
+- [x] **5. Uji validasi baris anggota kosong dan keteroperasian keyboard (Arman Dava Wicaksono) (Pengujian)**
+  - Berkas pengujian otomatis: `tests/Feature/PengisianAnggotaKegiatanB10BTest.php` (8 test cases komprehensif).
   - Skenario pengujian yang terbukti lulus:
     1. Pengusul dapat mengajukan surat dengan daftar anggota secara *bulk* (tersimpan ke `surat_personel`).
     2. Sistem memblokir submit jika ada baris anggota dengan Nama kosong (HTTP 422 / error session).
     3. Sistem memblokir submit jika ada baris anggota dengan Peran kosong (HTTP 422 / error session).
     4. Elemen tombol memenuhi target sentuh minimal 44x44px dan focus ring kontras tinggi.
-    5. Endpoint API bulk personel berfungsi dan memblokir upaya manipulasi akses lintas akun (IDOR 403).
+    5. Form khusus dosen dan mahasiswa memakai komponen personel bersama.
+    6. Preview surat membaca personel dari tabel relasi.
+    7. Surat lama dengan JSON `anggota` tetap terbaca (kompatibilitas).
+    8. Endpoint API bulk personel berfungsi dan memblokir upaya manipulasi akses lintas akun (IDOR 403).
 
 ---
 
 ## 3. Bukti Perintah Pengujian
 Jalankan pengujian melalui terminal:
 ```powershell
-php artisan test tests/Feature/PengisianAnggotaKegiatanB10BTest.php
+php artisan test tests/Feature/PengisianAnggotaKegiatanB10BTest.php tests/Feature/PengajuanTerikatKeAkunTest.php
+php artisan test
+```
+
+Hasil terakhir:
+```text
+Tests:    65 passed (351 assertions)
+Duration: 10.53s
 ```

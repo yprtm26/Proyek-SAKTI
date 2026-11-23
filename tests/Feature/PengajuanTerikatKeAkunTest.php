@@ -77,11 +77,50 @@ class PengajuanTerikatKeAkunTest extends TestCase
         $this->assertSame('PdSI', $surat->data['prodi']);
     }
 
-    public function test_pengajuan_mahasiswa_mengunci_pemohon_pertama_di_data_kelompok(): void
+    public function test_pengajuan_mahasiswa_mengunci_pemohon_pertama_di_tabel_personel(): void
     {
         $user = $this->mahasiswa();
         $jenis = JenisSurat::create([
             'nama' => 'Observasi Uji',
+            'slug' => 'surat-observasi-tugas-mata-kuliah',
+            'fields' => ['anggota_tim'],
+            'alur' => ['admin'],
+            'aktif' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->post('/mahasiswa/surat/ajukan/'.$jenis->id, [
+                'perihal' => 'Observasi',
+                'kepada_yth' => 'Penerima',
+                'nama_instansi' => 'Instansi',
+                'kota_instansi' => 'Jakarta',
+                'mata_kuliah' => 'Pengujian',
+                'jenis_kegiatan' => 'Observasi',
+                'personel' => [
+                    ['nama' => 'Nama Palsu', 'peran' => 'Pemohon', 'instansi' => '99999999'],
+                    ['nama' => 'Anggota', 'peran' => 'Anggota', 'instansi' => '87654321'],
+                ],
+            ])
+            ->assertRedirect();
+
+        $surat = SuratPengajuan::query()->sole();
+        $this->assertSame($user->id, $surat->user_id);
+        $this->assertArrayNotHasKey('personel', $surat->data);
+
+        $personel = $surat->personel;
+        $this->assertCount(2, $personel);
+        $this->assertSame('Mahasiswa Uji', $personel[0]->nama);
+        $this->assertSame('12345678', $personel[0]->instansi);
+        $this->assertSame('Anggota', $personel[1]->nama);
+        $this->assertSame('Anggota', $personel[1]->peran);
+        $this->assertSame('87654321', $personel[1]->instansi);
+    }
+
+    public function test_pengajuan_legacy_anggota_tim_tetap_disimpan_ke_tabel_personel(): void
+    {
+        $user = $this->mahasiswa();
+        $jenis = JenisSurat::create([
+            'nama' => 'Observasi Legacy',
             'slug' => 'surat-observasi-tugas-mata-kuliah',
             'fields' => ['anggota_tim'],
             'alur' => ['admin'],
@@ -104,10 +143,11 @@ class PengajuanTerikatKeAkunTest extends TestCase
             ->assertRedirect();
 
         $surat = SuratPengajuan::query()->sole();
-        $this->assertSame($user->id, $surat->user_id);
-        $this->assertSame('Mahasiswa Uji', $surat->data['anggota_tim'][0]['nama']);
-        $this->assertSame('12345678', $surat->data['anggota_tim'][0]['npm']);
-        $this->assertSame('Anggota', $surat->data['anggota_tim'][1]['nama']);
+        $this->assertSame('Mahasiswa Uji', $surat->personel[0]->nama);
+        $this->assertSame('12345678', $surat->personel[0]->instansi);
+        $this->assertSame('Anggota', $surat->personel[1]->nama);
+        $this->assertSame('Anggota', $surat->personel[1]->peran);
+        $this->assertSame('87654321', $surat->personel[1]->instansi);
     }
 
     public function test_formulir_pengajuan_memuat_identitas_akun_terkunci(): void

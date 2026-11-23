@@ -87,6 +87,9 @@
                 $nilai = $terkunci ? $fieldTerkunci[$field] : old($field, '');
             @endphp
 
+            {{-- B-10 B: field anggota/personel dirender sebagai tabel dinamis. --}}
+            @continue(in_array($field, ['anggota', 'anggota_tim', 'personel'], true))
+
             <div>
                 <label for="field-{{ $field }}" class="block text-sm font-medium text-gray-700 mb-1">
                     {{ $label }}
@@ -129,7 +132,7 @@
         @endforelse
 
         {{-- B-10 B: TABEL DINAMIS PERSONEL / ANGGOTA KEGIATAN --}}
-        @if(in_array('anggota', $fields, true) || in_array('personel', $fields, true) || in_array('anggota_tim', $fields, true) || str_contains(strtolower($jenisSurat->nama), 'kegiatan') || str_contains(strtolower($jenisSurat->nama), 'tugas'))
+        @if(array_intersect(['anggota', 'anggota_tim', 'personel'], $fields))
             @include('surat.partials.tabel-personel')
         @endif
 

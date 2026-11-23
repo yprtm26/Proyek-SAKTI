@@ -12,6 +12,16 @@
     </p>
 </div>
 
+@if($errors->any())
+    <div class="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg" role="alert">
+        <ul class="list-disc list-inside text-sm space-y-1">
+            @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
 <form method="POST" action="/mahasiswa/surat/ajukan/{{ $jenisSurat->id }}"
       class="space-y-6">
     @csrf
@@ -85,52 +95,8 @@
         </div>
     </div>
 
-    {{-- ================= ANGGOTA TIM ================= --}}
-    <div class="bg-white rounded shadow p-6">
-        <div class="flex justify-between items-center mb-3">
-            <h3 class="text-gray-700">
-                <span class="font-semibold">Anggota Tim</span>
-                <span class="font-normal">(opsional)</span>
-            </h3>
-            <button type="button"
-                    onclick="addRow()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-3 py-2 rounded">
-                + Tambah Anggota
-            </button>
-        </div>
-
-        <div class="overflow-x-auto">
-            <table class="w-full border">
-                <thead class="bg-gray-100 text-sm">
-                    <tr>
-                        <th class="border px-3 py-2">No</th>
-                        <th class="border px-3 py-2">Nama</th>
-                        <th class="border px-3 py-2">NPM</th>
-                        <th class="border px-3 py-2">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody id="anggotaTable">
-                    {{-- BARIS PERTAMA (PEMOHON) --}}
-                    <tr>
-                        <td class="border px-3 py-2 text-center">1</td>
-                        <td class="border px-3 py-2">
-                            <input type="text" name="anggota_tim[0][nama]"
-                                   value="{{ auth()->user()->name }}"
-                                   class="w-full border rounded px-2 py-1" readonly>
-                        </td>
-                        <td class="border px-3 py-2">
-                            <input type="text" name="anggota_tim[0][npm]"
-                                   value="{{ auth()->user()->npm }}"
-                                   class="w-full border rounded px-2 py-1" readonly>
-                        </td>
-                        <td class="border px-3 py-2 text-center text-gray-400">
-                            Pemohon
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    {{-- ================= ANGGOTA TIM (DINAMIS) ================= --}}
+    @include('surat.partials.tabel-personel', ['defaultPeran' => 'Pemohon', 'identityRequired' => true])
 
     {{-- ================= BUTTON ================= --}}
     <div class="flex justify-end gap-3">
@@ -143,43 +109,5 @@
         </button>
     </div>
 </form>
-
-{{-- ================= JS ================= --}}
-<script>
-    let index = 1;
-
-    function addRow() {
-        const table = document.getElementById('anggotaTable');
-        const row = document.createElement('tr');
-
-        row.innerHTML = `
-            <td class="border px-3 py-2 text-center">${index+1}</td>
-            <td class="border px-3 py-2">
-                <input type="text" name="anggota_tim[${index}][nama]"
-                       class="w-full border rounded px-2 py-1" required>
-            </td>
-            <td class="border px-3 py-2">
-                <input type="text" name="anggota_tim[${index}][npm]"
-                       class="w-full border rounded px-2 py-1" required>
-            </td>
-            <td class="border px-3 py-2 text-center">
-                <button type="button"
-                        onclick="this.closest('tr').remove(); updateNumber();"
-                        class="text-red-600 text-sm">
-                    Hapus
-                </button>
-            </td>
-        `;
-        table.appendChild(row);
-        index++;
-    }
-
-    function updateNumber() {
-        const rows = document.querySelectorAll('#anggotaTable tr');
-        rows.forEach((row, i) => {
-            row.children[0].innerText = i + 1;
-        });
-    }
-</script>
 
 @endsection

@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TemplateSuratController;
 use App\Services\SecurityAuditLogger;
+use App\Services\PersonelSuratService;
 use App\Models\JenisSurat;
 use App\Models\SuratPengajuan;
 use App\Models\SumberDaya;
@@ -136,16 +137,21 @@ Route::get('/api/surat/{id}/personel', function ($id) {
 })->middleware('auth')->name('api.surat.personel.index');
 
 Route::post('/api/surat/{id}/personel', function (Request $request, $id) {
-    $surat = SuratPengajuan::findOrFail($id);
+    $surat = SuratPengajuan::with('user')->findOrFail($id);
 
-    // Guard kepemilikan akun atau staf TU/pimpinan
+    // B-10 B: hanya pengusul yang boleh mengubah personel suratnya.
     $user = Auth::user();
-    if ($surat->user_id !== $user->id && ! $user->isStaffSurat()) {
+    if ($surat->user_id !== $user->id) {
         abort(403, 'Anda tidak memiliki hak akses untuk mengelola personel surat ini.');
     }
 
-    $request->validate([
-        'personel'            => ['required', 'array', 'min:1'],
+    // Personel tidak boleh diubah setelah surat diproses/final.
+    if (! in_array($surat->status, ['menunggu', 'draf'], true)) {
+        abort(403, 'Personel surat tidak dapat diubah karena surat sudah diproses.');
+    }
+
+    $data = $request->validate([
+        'personel'            => ['required', 'array', 'min:1', 'max:50'],
         'personel.*.nama'     => ['required', 'string', 'max:150'],
         'personel.*.peran'    => ['required', 'string', 'max:100'],
         'personel.*.instansi' => ['nullable', 'string', 'max:150'],
@@ -154,23 +160,18 @@ Route::post('/api/surat/{id}/personel', function (Request $request, $id) {
         'personel.*.peran.required' => 'Peran anggota wajib diisi pada setiap baris.',
     ]);
 
-    // Hapus personel lama lalu simpan ulang (bulk replace)
-    $surat->personel()->delete();
-
-    $saved = [];
-    foreach ($request->personel as $i => $item) {
-        $saved[] = $surat->personel()->create([
-            'nama'     => trim($item['nama']),
-            'peran'    => trim($item['peran']),
-            'instansi' => trim($item['instansi'] ?? ''),
-            'urutan'   => $i + 1,
-        ]);
-    }
+    // Simpan bulk lewat service agar baris pertama selalu pengusul.
+    app(PersonelSuratService::class)->sync(
+        $surat,
+        $data['personel'],
+        $surat->user->role,
+        $surat->user
+    );
 
     return response()->json([
         'status'  => 'success',
         'message' => 'Daftar personel kegiatan berhasil diperbarui.',
-        'data'    => $saved,
+        'data'    => $surat->personel()->get(),
     ], 200);
 })->middleware('auth')->name('api.surat.personel.store');
 
@@ -420,8 +421,23 @@ Route::post('/notifikasi/read-all', function () {
                 $rules['anggota.*.nidn'] = ['nullable', 'string', 'regex:/^[0-9]{8,18}$/'];
             }
 
-            // B-10 B: Validasi baris personel / anggota kegiatan jika dikirimkan
-            if ($request->has('personel') && is_array($request->personel)) {
+            // B-10 B: normalisasi baris personel. Form baru mengirim `personel`,
+            // sedangkan form lama masih mengirim `anggota` dengan kolom
+            // `keterangan`. Keduanya dipetakan ke skema yang sama.
+            $personelRows = $request->input('personel');
+
+            if (! is_array($personelRows) && is_array($request->input('anggota'))) {
+                $personelRows = array_map(fn ($row) => is_array($row) ? [
+                    'nama' => $row['nama'] ?? '',
+                    'peran' => $row['peran'] ?? $row['keterangan'] ?? '',
+                    'instansi' => $row['instansi'] ?? $row['npm'] ?? $row['nidn'] ?? '',
+                ] : $row, $request->input('anggota'));
+            }
+
+            if (is_array($personelRows)) {
+                $request->merge(['personel' => $personelRows]);
+
+                $rules['personel'] = ['required', 'array', 'min:1', 'max:50'];
                 $rules['personel.*.nama'] = ['required', 'string', 'max:150'];
                 $rules['personel.*.peran'] = ['required', 'string', 'max:100'];
                 $rules['personel.*.instansi'] = ['nullable', 'string', 'max:150'];
@@ -444,9 +460,8 @@ Route::post('/notifikasi/read-all', function () {
             if (isset($validated['prodi'])) {
                 $validated['prodi'] = Auth::user()->prodi;
             }
-            if (isset($validated['anggota']) && is_array($validated['anggota']) && count($validated['anggota']) > 0) {
-                $validated['anggota'][0]['nama'] = Auth::user()->name;
-            }
+            // B-10 B: personel disimpan di tabel relasi, bukan di JSON `data`.
+            unset($validated['anggota'], $validated['personel']);
 
             $surat = SuratPengajuan::create([
                 'user_id' => Auth::id(),
@@ -455,18 +470,9 @@ Route::post('/notifikasi/read-all', function () {
                 'status' => 'menunggu',
             ]);
 
-            // B-10 B: Simpan bulk personel / anggota kegiatan ke tabel surat_personel
-            if ($request->has('personel') && is_array($request->personel)) {
-                foreach ($request->personel as $i => $item) {
-                    if (is_array($item) && (!empty($item['nama']) || !empty($item['peran']))) {
-                        $surat->personel()->create([
-                            'nama' => trim($item['nama'] ?? ''),
-                            'peran' => trim($item['peran'] ?? ''),
-                            'instansi' => trim($item['instansi'] ?? ''),
-                            'urutan' => $i + 1,
-                        ]);
-                    }
-                }
+            // B-10 B: simpan bulk personel; baris pertama selalu pengusul.
+            if (is_array($personelRows)) {
+                app(PersonelSuratService::class)->sync($surat, $personelRows, 'dosen', Auth::user());
             }
 
             // NOTIFIKASI ADMIN
@@ -501,7 +507,7 @@ Route::post('/notifikasi/read-all', function () {
                 ->each(fn ($notif) => $notif->markAsRead());
 
             // TAMBAHKAN INI
-            $anggota = json_decode($surat->anggota, true) ?? [];
+            $anggota = $surat->data['anggota'] ?? [];
 
             // DEFAULT
             $qrUrl = null;
@@ -619,6 +625,9 @@ Route::post('/notifikasi/read-all', function () {
             $jenisSurat = JenisSurat::aktif()
                 ->untukPengguna('mahasiswa')
                 ->findOrFail($id);
+
+            // B-10 B: baris personel (jika ada) disimpan setelah surat dibuat.
+            $personelRows = null;
 
             // SURAT REMEDIAL BAHASA INGGRIS
             if ($jenisSurat->slug === 'surat-pengantar-remedial-bahasa-inggris') {
@@ -742,19 +751,33 @@ Route::post('/notifikasi/read-all', function () {
                     }
                 }
 
-                if ($request->has('anggota_tim') && is_array($request->anggota_tim)) {
-                    $rules['anggota_tim.*.nama'] = ['required', 'string', 'max:100'];
-                    $rules['anggota_tim.*.npm'] = ['required', 'string', 'regex:/^[0-9]{8,12}$/'];
-                    $customMessages['anggota_tim.*.npm.regex'] = 'Format NPM anggota tim tidak valid (harus berupa 8-12 digit angka).';
+                // B-10 B: normalisasi baris personel. Form baru mengirim
+                // `personel`, form lama mengirim `anggota_tim` (nama, npm).
+                $personelRows = $request->input('personel');
+
+                if (! is_array($personelRows) && is_array($request->input('anggota_tim'))) {
+                    $personelRows = array_map(fn ($row) => is_array($row) ? [
+                        'nama' => $row['nama'] ?? '',
+                        'peran' => $row['peran'] ?? $row['keterangan'] ?? 'Anggota',
+                        'instansi' => $row['instansi'] ?? $row['npm'] ?? $row['nidn'] ?? '',
+                    ] : $row, $request->input('anggota_tim'));
                 }
 
-                // B-10 B: Validasi baris personel / anggota kegiatan jika dikirimkan
-                if ($request->has('personel') && is_array($request->personel)) {
+                if (is_array($personelRows)) {
+                    $request->merge(['personel' => $personelRows]);
+
+                    $rules['personel'] = ['required', 'array', 'min:1', 'max:50'];
                     $rules['personel.*.nama'] = ['required', 'string', 'max:150'];
                     $rules['personel.*.peran'] = ['required', 'string', 'max:100'];
                     $rules['personel.*.instansi'] = ['nullable', 'string', 'max:150'];
                     $customMessages['personel.*.nama.required'] = 'Nama anggota wajib diisi pada setiap baris.';
                     $customMessages['personel.*.peran.required'] = 'Peran anggota wajib diisi pada setiap baris.';
+
+                    // Pada surat observasi, kolom identitas berisi NPM.
+                    if ($jenisSurat->slug === 'surat-observasi-tugas-mata-kuliah') {
+                        $rules['personel.*.instansi'] = ['required', 'string', 'regex:/^[0-9]{8,12}$/'];
+                        $customMessages['personel.*.instansi.regex'] = 'Format NPM anggota tim tidak valid (harus berupa 8-12 digit angka).';
+                    }
                 }
 
                 $validated = $request->validate($rules, $customMessages);
@@ -771,14 +794,8 @@ Route::post('/notifikasi/read-all', function () {
                     $validated['prodi'] = Auth::user()->prodi;
                 }
 
-                // B-02: Kunci pemohon pertama pada anggota tim
-                if (isset($validated['anggota_tim']) && is_array($validated['anggota_tim'])) {
-                    $firstApplicant = array_key_first($validated['anggota_tim']);
-                    if ($firstApplicant !== null) {
-                        $validated['anggota_tim'][$firstApplicant]['nama'] = Auth::user()->name;
-                        $validated['anggota_tim'][$firstApplicant]['npm'] = Auth::user()->npm;
-                    }
-                }
+                // B-10 B: personel disimpan di tabel relasi, bukan di JSON `data`.
+                unset($validated['anggota_tim'], $validated['personel']);
 
                 $data = $validated;
             }
@@ -791,18 +808,9 @@ Route::post('/notifikasi/read-all', function () {
                 'status' => 'menunggu',
             ]);
 
-            // B-10 B: Simpan bulk personel / anggota kegiatan ke tabel surat_personel
-            if ($request->has('personel') && is_array($request->personel)) {
-                foreach ($request->personel as $i => $item) {
-                    if (is_array($item) && (!empty($item['nama']) || !empty($item['peran']))) {
-                        $surat->personel()->create([
-                            'nama' => trim($item['nama'] ?? ''),
-                            'peran' => trim($item['peran'] ?? ''),
-                            'instansi' => trim($item['instansi'] ?? ''),
-                            'urutan' => $i + 1,
-                        ]);
-                    }
-                }
+            // B-10 B: simpan bulk personel; baris pertama selalu pengusul.
+            if (is_array($personelRows)) {
+                app(PersonelSuratService::class)->sync($surat, $personelRows, 'mahasiswa', Auth::user());
             }
 
             // ================= SIMPAN LAMPIRAN =================

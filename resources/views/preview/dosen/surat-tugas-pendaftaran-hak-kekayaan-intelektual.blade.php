@@ -157,11 +157,11 @@
             </tr>
         </thead>
         <tbody>
-            @foreach(($surat->data['anggota'] ?? []) as $i => $a)
+            @foreach(personelSurat($surat) as $i => $a)
             <tr>
                 <td>{{ $i + 1 }}</td>
-                <td>{{ $a['nama'] }}</td>
-                <td>{{ $a['keterangan'] }}</td>
+                <td>{{ $a['nama'] ?? '-' }}</td>
+                <td>{{ peranPersonel($a) }}</td>
             </tr>
             @endforeach
         </tbody>

@@ -60,7 +60,7 @@ class PersonelSuratService
                 'nama' => mb_substr($nama, 0, 150),
                 'peran' => $peran === '' ? null : mb_substr($peran, 0, 100),
                 'instansi' => $identitas === '' ? null : mb_substr($identitas, 0, 150),
-                'urutan' => count($hasil),
+                'urutan' => count($hasil) + 1,
             ];
         }
 

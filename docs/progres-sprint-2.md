@@ -114,18 +114,24 @@
 * **Checklist:**
   - [x] 1. Rancang antarmuka tabel dinamis tambah/hapus anggota kegiatan (Josua Rajak) (UI/UX) (`resources/views/surat/partials/tabel-personel.blade.php`)
   - [x] 2. Tabel relasi personel surat dan endpoint simpan bulk anggota (Yuga Pratama Andika Syaputra) (Backend) (`database/migrations/2026_11_23_000001_create_surat_personel_table.php`, `app/Models/SuratPersonel.php`, `routes/web.php`)
-  - [x] 3. Komponen dynamic input row anggota di form pengajuan (Josua Rajak) (Front-end) (`resources/views/dosen/surat/form/surat-tugas-kegiatan-kuliah.blade.php`, `resources/views/surat/form-dinamis.blade.php`)
-  - [x] 4. Uji validasi baris anggota kosong dan keteroperasian keyboard (Arman Dava Wicaksono) (Pengujian) (`tests/Feature/PengisianAnggotaKegiatanB10BTest.php`)
+  - [x] 3. Komponen dynamic input row anggota di form pengajuan (Josua Rajak) (Front-end) (`resources/views/surat/partials/tabel-personel.blade.php`, `resources/views/surat/form-dinamis.blade.php`, form khusus dosen HKI/buku ajar/penelitian, form observasi mahasiswa)
+  - [x] 4. Uji validasi baris anggota kosong dan keteroperasian keyboard (Arman Dava Wicaksono) (Pengujian) (`tests/Feature/PengisianAnggotaKegiatanB10BTest.php`, `tests/Feature/PengajuanTerikatKeAkunTest.php`)
 * **Bukti Pengujian:**
   ```text
-  php artisan test tests/Feature/PengisianAnggotaKegiatanB10BTest.php
+  php artisan test tests/Feature/PengisianAnggotaKegiatanB10BTest.php tests/Feature/PengajuanTerikatKeAkunTest.php
   PASS  Tests\Feature\PengisianAnggotaKegiatanB10BTest
   ✓ pengusul dapat mengajukan surat dengan daftar anggota secara bulk
   ✓ sistem memblokir submit jika ada baris anggota yang namanya kosong
   ✓ sistem memblokir submit jika ada baris anggota yang perannya kosong
   ✓ komponen view tabel personel memenuhi standar aksesibilitas
+  ✓ form khusus memakai komponen personel bersama
+  ✓ preview dosen menampilkan personel dari tabel relasi
+  ✓ helper personel memakai fallback data lama
   ✓ api bulk personel berhasil dan dilindungi anti idor
-  Tests: 5 passed (14 assertions)
+  Tests: 14 passed (87 assertions)
+
+  php artisan test
+  Tests: 65 passed (351 assertions)
   ```
 * **Dokumentasi Terkait:** `docs/progres-b-10b.md`
 

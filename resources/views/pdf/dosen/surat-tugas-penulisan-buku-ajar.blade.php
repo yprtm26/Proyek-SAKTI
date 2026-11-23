@@ -144,8 +144,8 @@
 
 {{-- ================= DAFTAR ANGGOTA ================= --}}
 <ul>
-    @foreach($surat->data['anggota'] ?? [] as $a)
-        <li>{{ $a['nama'] ?? '-' }}</li>
+    @foreach(personelSurat($surat) as $a)
+        <li>{{ $a['nama'] ?? '-' }} — {{ peranPersonel($a) }}</li>
     @endforeach
 </ul>
 

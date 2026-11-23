@@ -12,6 +12,16 @@
         </p>
     </div>
 
+    @if($errors->any())
+        <div class="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg" role="alert">
+            <ul class="list-disc list-inside text-sm space-y-1">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     {{-- FORM --}}
     <form method="POST"
           action="{{ url('/dosen/surat/ajukan/'.$jenisSurat->id) }}"
@@ -50,54 +60,7 @@
         </div>
 
         {{-- ================= ANGGOTA (DINAMIS) ================= --}}
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Daftar Anggota</label>
-
-            <table class="w-full border mt-2" id="anggota-table">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="border p-2 w-1/12">No</th>
-                        <th class="border p-2">Nama</th>
-                        <th class="border p-2">Sebagai</th>
-                        <th class="border p-2 w-1/12">Hapus</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="border p-2 text-center nomor">1</td>
-                        <td class="border p-2">
-                            <input type="text"
-                                name="anggota[0][nama]"
-                                value="{{ Auth::user()->name }}"
-                                readonly
-                                class="w-full border rounded px-2 py-1 bg-gray-100 cursor-not-allowed"
-                                placeholder="Nama lengkap & gelar"
-                                required>
-                        </td>
-                        <td class="border p-2">
-                            <input type="text"
-                                name="anggota[0][keterangan]"
-                                class="w-full border rounded px-2 py-1"
-                                placeholder="Contoh: Penulis ke-1"
-                                required>
-                        </td>
-                        <td class="border p-2 text-center">
-                            <button type="button"
-                                onclick="hapusBaris(this)"
-                                class="text-red-600 font-bold">
-                                ✕
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <button type="button"
-                onclick="tambahBaris()"
-                class="mt-2 px-3 py-1 bg-blue-600 text-white rounded">
-                + Tambah Anggota
-            </button>
-        </div>
+        @include('surat.partials.tabel-personel', ['defaultPeran' => 'Penulis ke-1'])
 
         {{-- ================= JUDUL PENELITIAN ================= --}}
         <div>
@@ -149,61 +112,4 @@
     </form>
 
 </main>
-
-{{-- ================= SCRIPT ANGGOTA ================= --}}
-<script>
-let indexAnggota = 1;
-
-function tambahBaris() {
-    const tbody = document.querySelector('#anggota-table tbody');
-
-    const row = document.createElement('tr');
-    row.innerHTML = `
-        <td class="border p-2 text-center nomor"></td>
-        <td class="border p-2">
-            <input type="text"
-                name="anggota[${indexAnggota}][nama]"
-                class="w-full border rounded px-2 py-1"
-                placeholder="Nama lengkap & gelar"
-                required>
-        </td>
-        <td class="border p-2">
-            <input type="text"
-                name="anggota[${indexAnggota}][keterangan]"
-                class="w-full border rounded px-2 py-1"
-                placeholder="Contoh: Anggota / Dosen"
-                required>
-        </td>
-        <td class="border p-2 text-center">
-            <button type="button"
-                onclick="hapusBaris(this)"
-                class="text-red-600 font-bold">
-                ✕
-            </button>
-        </td>
-    `;
-
-    tbody.appendChild(row);
-    indexAnggota++;
-    updateNomor();
-}
-
-function hapusBaris(btn) {
-    const tbody = document.querySelector('#anggota-table tbody');
-
-    if (tbody.rows.length === 1) {
-        alert('Minimal satu anggota harus ada');
-        return;
-    }
-
-    btn.closest('tr').remove();
-    updateNomor();
-}
-
-function updateNomor() {
-    document.querySelectorAll('.nomor').forEach((el, i) => {
-        el.innerText = i + 1;
-    });
-}
-</script>
 @endsection

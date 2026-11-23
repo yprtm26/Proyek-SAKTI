@@ -167,6 +167,36 @@
         </tr>
     </table>
 
+    {{-- ================= SUSUNAN PERSONEL TAMBAHAN ================= --}}
+    @php
+        $personelTambahan = array_slice(personelSurat($surat), 1);
+    @endphp
+    @if(count($personelTambahan) > 0)
+    <p style="margin-top:15px;">
+        Dengan susunan tim sebagai berikut:
+    </p>
+    <table style="margin-left:30px; margin-top:10px; border-collapse: collapse;" border="1">
+        <thead>
+            <tr>
+                <th width="6%">No</th>
+                <th width="40%">Nama</th>
+                <th width="28%">Peran</th>
+                <th width="26%">Instansi / NIM</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($personelTambahan as $i => $p)
+            <tr>
+                <td style="text-align:center;">{{ $i + 1 }}</td>
+                <td>{{ $p['nama'] ?? '-' }}</td>
+                <td>{{ peranPersonel($p) }}</td>
+                <td>{{ identitasPersonel($p) }}</td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    @endif
+
     {{-- ================= ISI TUGAS ================= --}}
     <p style="margin-top:15px;">
         Untuk membantu pelaksanaan kegiatan

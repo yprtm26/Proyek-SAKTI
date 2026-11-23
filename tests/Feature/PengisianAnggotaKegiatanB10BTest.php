@@ -43,7 +43,7 @@ class PengisianAnggotaKegiatanB10BTest extends TestCase
             'nama'            => 'Surat Tugas Kegiatan Ilmiah',
             'slug'            => 'surat-tugas-kegiatan-ilmiah',
             'target_user'     => 'dosen',
-            'is_active'       => true,
+            'aktif'           => true,
             'alur'            => ['dekan'],
             'indeks_kegiatan' => 'Pendidikan',
             'fields'          => [
@@ -221,6 +221,122 @@ class PengisianAnggotaKegiatanB10BTest extends TestCase
         $view->assertSee('aria-label="Tambah baris anggota kegiatan baru"', false);
         $view->assertSee('tbody-personel', false);
         $view->assertSee('btn-tambah-personel', false);
+    }
+
+    /**
+     * Skenario 6 (Integrasi Form):
+     * Form khusus dosen dan mahasiswa memakai komponen personel bersama,
+     * sehingga tombol tambah/hapus dan validasi baris kosong tersedia.
+     */
+    public function test_form_khusus_memakai_komponen_personel_bersama(): void
+    {
+        $dosen = $this->createDosen();
+        $mahasiswa = $this->createMahasiswa();
+
+        $slugDosen = [
+            'surat-tugas-pendaftaran-hak-kekayaan-intelektual',
+            'surat-tugas-penulisan-buku-ajar',
+            'surat-tugas-penulisan-dan-publikasi-penelitian',
+        ];
+
+        foreach ($slugDosen as $slug) {
+            $jenis = JenisSurat::create([
+                'nama'        => 'Form Uji ' . $slug,
+                'slug'        => $slug,
+                'target_user' => 'dosen',
+                'aktif'       => true,
+                'alur'        => ['admin'],
+                'fields'      => ['anggota'],
+            ]);
+
+            $this->actingAs($dosen)
+                ->get('/dosen/surat/ajukan/' . $jenis->id)
+                ->assertOk()
+                ->assertSee('tambahBarisPersonel', false)
+                ->assertSee('name="personel[0][nama]"', false)
+                ->assertSee('min-h-[44px]', false);
+        }
+
+        $jenisObservasi = JenisSurat::create([
+            'nama'        => 'Observasi Uji',
+            'slug'        => 'surat-observasi-tugas-mata-kuliah',
+            'target_user' => 'mahasiswa',
+            'aktif'       => true,
+            'alur'        => ['admin'],
+            'fields'      => ['anggota_tim'],
+        ]);
+
+        $this->actingAs($mahasiswa)
+            ->get('/mahasiswa/surat/ajukan/' . $jenisObservasi->id)
+            ->assertOk()
+            ->assertSee('tambahBarisPersonel', false)
+            ->assertSee('name="personel[0][instansi]"', false);
+    }
+
+    /**
+     * Skenario 7 (Integrasi Preview):
+     * Preview surat dosen membaca personel dari tabel relasi, bukan JSON lama.
+     */
+    public function test_preview_dosen_menampilkan_personel_dari_tabel_relasi(): void
+    {
+        $dosen = $this->createDosen();
+        $jenis = JenisSurat::create([
+            'nama'        => 'Pendaftaran HKI',
+            'slug'        => 'surat-tugas-pendaftaran-hak-kekayaan-intelektual',
+            'target_user' => 'dosen',
+            'aktif'       => true,
+            'alur'        => ['admin'],
+            'fields'      => ['anggota'],
+        ]);
+
+        $surat = SuratPengajuan::create([
+            'user_id'        => $dosen->id,
+            'jenis_surat_id' => $jenis->id,
+            'data'           => [
+                'judul_karya'         => 'Aplikasi Uji',
+                'tanggal_pendaftaran' => '2026-12-01',
+            ],
+            'status' => 'menunggu',
+        ]);
+
+        $surat->personel()->createMany([
+            ['nama' => 'Dr. Dosen Penguji, M.Kom.', 'peran' => 'Ketua / Penanggung Jawab', 'instansi' => 'FTI YARSI', 'urutan' => 1],
+            ['nama' => 'Rekan Penulis', 'peran' => 'Anggota Penulis', 'instansi' => 'FTI YARSI', 'urutan' => 2],
+        ]);
+
+        $this->actingAs($dosen)
+            ->get('/dosen/surat/' . $surat->id)
+            ->assertOk()
+            ->assertSee('Rekan Penulis')
+            ->assertSee('Anggota Penulis');
+    }
+
+    /**
+     * Skenario 8 (Kompatibilitas Data Lama):
+     * Surat lama yang masih menyimpan anggota di JSON `data` tetap terbaca.
+     */
+    public function test_helper_personel_memakai_fallback_data_lama(): void
+    {
+        $dosen = $this->createDosen();
+        $jenis = $this->createTemplateTugas();
+
+        $surat = SuratPengajuan::create([
+            'user_id'        => $dosen->id,
+            'jenis_surat_id' => $jenis->id,
+            'data'           => [
+                'anggota' => [
+                    ['nama' => 'Anggota Lama', 'keterangan' => 'Ketua'],
+                ],
+            ],
+            'status' => 'menunggu',
+        ]);
+
+        $personel = personelSurat($surat);
+
+        $this->assertCount(1, $personel);
+        $this->assertSame('Anggota Lama', $personel[0]['nama']);
+        $this->assertSame('Ketua', peranPersonel($personel[0]));
+        $this->assertSame('-', identitasPersonel($personel[0]));
     }
 
     /**
