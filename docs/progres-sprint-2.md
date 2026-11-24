@@ -16,7 +16,7 @@
 | **B-10 A** | Pemilihan waktu mulai dan selesai kegiatan (time picker) | **Selesai** | Mask format 24 jam (`HH:mm`), popover visual aksesibel (WCAG AA), normalisasi pemisah titik, dan validasi jam selesai $>$ mulai pada hari yang sama. Test lolos (6 tests, 26 assertions & 11 JS unit tests). |
 | **B-10 B** | Pengisian daftar anggota dan peran dalam kegiatan | **Belum dikerjakan** | Dynamic input row anggota, target klik $\ge 44 \times 44\text{px}$, validasi baris kosong. |
 | **B-13 A** | Penyimpanan pengajuan surat sebagai draf | **Belum dikerjakan** | Status 'Draf' di DB, isolasi dari antrean TU, validasi wajib template. |
-| **B-13 B** | Pembukaan dan pengubahan draf surat milik pengusul | **Belum dikerjakan** | Halaman edit draf, aksi kirim pengajuan, proteksi 403 IDOR lintas akun. |
+| **B-13 B** | Pembukaan dan pengubahan draf surat milik pengusul | **Selesai** | Halaman edit draf populate isian lama (termasuk template dengan form khusus), aksi kirim pengajuan ubah status jadi `menunggu`, proteksi 403 IDOR. 14 test lolos. |
 | **B-14** | Penghapusan permanen draf pengajuan surat | **Belum dikerjakan** | Fitur hapus draf mandiri oleh pengusul. |
 | **B-19** | Pengurutan antrean surat secara FIFO di dasbor TU | **Belum dikerjakan** | Antrean urut kronologis pengajuan masuk. |
 | **B-20** | Verifikasi surat oleh Admin TU beserta catatan revisi | **Belum dikerjakan** | Alur verifikasi surat dan feedback catatan revisi. |
@@ -168,24 +168,45 @@
 ---
 
 ### 7. [B-13 A] Penyimpanan pengajuan surat sebagai draf
-* **Status:** Belum dikerjakan (Product Backlog Sprint 2)
+* **Status:** Selesai (100% — Siap dipindahkan ke Review/Done)
 * **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
-  - [ ] 1. Skema status 'Draf' pada tabel pengajuan dan isolasi query TU (Backend)
-  - [ ] 2. Tombol aksi 'Simpan Draf' dan penanganan status di form pengajuan (Front-end)
-  - [ ] 3. Endpoint API simpan draf pengajuan parsial (Backend)
-  - [ ] 4. Uji simpan draf dan verifikasi draf tidak masuk ke antrean TU (Pengujian)
+  - [x] 1. Skema status 'Draf' pada tabel pengajuan dan isolasi query TU (Backend)
+  - [x] 2. Tombol aksi 'Simpan Draf' dan penanganan status di form pengajuan (Front-end)
+  - [x] 3. Endpoint API simpan draf pengajuan parsial (Backend)
+  - [x] 4. Uji simpan draf dan verifikasi draf tidak masuk ke antrean TU (Pengujian)
 
 ---
 
 ### 8. [B-13 B] Pembukaan dan pengubahan draf surat milik pengusul
-* **Status:** Belum dikerjakan (Product Backlog Sprint 2)
+* **Status:** Selesai (100% — Siap dipindahkan ke Review/Done)
 * **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
-  - [ ] 1. Endpoint get detail draf surat dengan guard kepemilikan akun (Backend)
-  - [ ] 2. Halaman edit draf dan populate data lama ke dalam form (Front-end)
-  - [ ] 3. Aksi 'Kirim Pengajuan' dari draf untuk update status ke 'Diajukan' (Backend)
-  - [ ] 4. Uji proteksi akses lintas akun (IDOR 403) pada endpoint dan UI edit draf (Pengujian)
+  - [x] 1. Endpoint get detail draf surat dengan guard kepemilikan akun (Backend)
+  - [x] 2. Halaman edit draf dan populate data lama ke dalam form (Front-end)
+  - [x] 3. Aksi 'Kirim Pengajuan' dari draf untuk update status ke 'menunggu' (Backend)
+  - [x] 4. Uji proteksi akses lintas akun (IDOR 403) pada endpoint dan UI edit draf (Pengujian)
+* **Bukti Pengujian:**
+  ```text
+  php artisan test --filter=EditDrafSuratB13BTest
+  PASS  Tests\Feature\EditDrafSuratB13BTest
+  ✓ mahasiswa dapat membuka halaman edit draf miliknya
+  ✓ dosen dapat membuka halaman edit draf miliknya
+  ✓ mahasiswa lain tidak dapat membuka draf milik orang lain
+  ✓ dosen lain tidak dapat membuka draf milik dosen lain
+  ✓ endpoint post update draf mengembalikan 403 jika bukan pemilik
+  ✓ mahasiswa dapat memperbarui isian draf tanpa mengirim pengajuan
+  ✓ mahasiswa dapat mengirim pengajuan dari draf sehingga status menjadi menunggu
+  ✓ dosen dapat mengirim pengajuan dari draf sehingga status menjadi menunggu
+  ✓ kirim pengajuan dari draf gagal jika field wajib kosong
+  ✓ simpan draf ulang boleh dengan isian parsial tanpa error
+  ✓ surat non draf tidak dapat diakses via endpoint edit draf
+  ✓ surat yang dikirim dari draf muncul di antrean admin
+  ✓ edit draf template dengan form khusus memunculkan isian lama
+  ✓ kirim draf dari form khusus memperbarui surat yang sama
+  Tests: 14 passed (46 assertions)
+  ```
+* **Dokumentasi Terkait:** `docs/progres-b-13b.md`
 
 ---
 

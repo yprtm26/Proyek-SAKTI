@@ -659,6 +659,155 @@ Route::post('/notifikasi/read-all', function () {
 
         /*
         |--------------------------------------------------------------------------
+        | B-13 B: BUKA & EDIT DRAF SURAT DOSEN
+        |--------------------------------------------------------------------------
+        | AC-1: Pengusul dapat membuka draf miliknya dengan semua isian terisi.
+        | AC-3: 403 Forbidden jika bukan milik akun yang login.
+        */
+        Route::get('/dosen/surat/{id}/edit-draf', function ($id) {
+
+            // Guard kepemilikan — 403 Forbidden jika bukan milik pengusul yang login.
+            $draf = SuratPengajuan::with(['jenisSurat'])
+                ->where('id', $id)
+                ->where('status', 'draf')
+                ->firstOrFail(); // 404 jika tidak ada / bukan draf
+
+            if ($draf->user_id !== Auth::id()) {
+                abort(403, 'Anda tidak memiliki akses ke draf surat milik akun lain.');
+            }
+
+            $jenisSurat = $draf->jenisSurat;
+
+            // B-13 B: selalu pakai form edit generik. Form khusus (create)
+            // tidak membaca $draf dan masih POST ke endpoint create, sehingga
+            // isian lama tidak muncul & "Kirim Pengajuan" akan membuat surat baru.
+            return view('surat.edit-draf', [
+                'jenisSurat'  => $jenisSurat,
+                'draf'        => $draf,
+                'targetUser'  => 'dosen',
+                'action'      => url('/dosen/surat/' . $draf->id . '/update-draf'),
+                'kembaliUrl'  => url('/dosen/surat'),
+            ]);
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | B-13 B: UPDATE DRAF SURAT DOSEN (SIMPAN ULANG / KIRIM PENGAJUAN)
+        |--------------------------------------------------------------------------
+        | AC-2: Menekan 'Kirim Pengajuan' mengubah status menjadi 'menunggu'.
+        | AC-3: 403 jika bukan pemilik.
+        */
+        Route::post('/dosen/surat/{id}/update-draf', function (Request $request, $id) {
+
+            $draf = SuratPengajuan::where('id', $id)
+                ->where('status', 'draf')
+                ->firstOrFail();
+
+            if ($draf->user_id !== Auth::id()) {
+                abort(403, 'Anda tidak memiliki akses ke draf surat milik akun lain.');
+            }
+
+            $jenisSurat  = $draf->jenisSurat;
+            $isDraft     = $request->input('action') === 'draft' || $request->has('simpan_draf');
+            $user        = Auth::user();
+
+            // ===== VALIDASI =====
+            if (! $isDraft) {
+                // Kirim pengajuan — validasi penuh wajib.
+                $rules = [];
+                foreach ($jenisSurat->fields as $field) {
+                    $rules[$field] = 'required';
+                }
+                $request->validate($rules);
+            }
+
+            // Allowlist field + sanitasi XSS
+            $fieldDiizinkan = array_values(array_unique(array_merge(
+                (array) ($jenisSurat->fields ?? []),
+                ['mahasiswa', 'anggota', 'anggota_tim', 'personel', 'label_lampiran']
+            )));
+
+            $identitasTerkunci = [
+                'nama'            => $user->name,
+                'nama_dosen'      => $user->name,
+                'nama_ditugaskan' => $user->name,
+                'npm'             => $user->npm,
+                'nidn'            => $user->nidn,
+                'no_nip'          => $user->nidn,
+                'prodi'           => $user->prodi,
+            ];
+
+            // Gabung data lama dengan isian baru dari request.
+            $dataBaru = (array) ($draf->data ?? []);
+
+            foreach ($fieldDiizinkan as $field) {
+                if (! $request->exists($field)) {
+                    continue;
+                }
+                $nilai = $request->input($field);
+                if (is_array($nilai)) {
+                    $nilai = array_map(function ($item) {
+                        if (is_array($item)) {
+                            return array_map(fn ($v) => is_scalar($v) ? mb_substr(strip_tags((string)$v), 0, 500) : null, $item);
+                        }
+                        return is_scalar($item) ? mb_substr(strip_tags((string)$item), 0, 500) : null;
+                    }, $nilai);
+                } else {
+                    $nilai = mb_substr(strip_tags((string)$nilai), 0, 500);
+                }
+                $dataBaru[$field] = array_key_exists($field, $identitasTerkunci) ? $identitasTerkunci[$field] : $nilai;
+            }
+
+            // Pastikan identitas selalu terkunci.
+            foreach ($identitasTerkunci as $field => $nilai) {
+                if (in_array($field, $fieldDiizinkan, true)) {
+                    $dataBaru[$field] = $nilai;
+                }
+            }
+
+            // B-08: resolusi prodi/semester
+            if (array_key_exists('prodi_id', $dataBaru)) {
+                $prodi = \App\Models\MasterData::findProdi($dataBaru['prodi_id']);
+                if ($prodi) {
+                    $dataBaru['prodi']      = $prodi->kode;
+                    $dataBaru['prodi_nama'] = $prodi->nama;
+                }
+            }
+            if (array_key_exists('semester', $dataBaru) && is_numeric($dataBaru['semester'])) {
+                $semester = \App\Models\MasterData::findSemester($dataBaru['semester']);
+                if ($semester) {
+                    $dataBaru['semester_id'] = $semester->id;
+                    $dataBaru['semester']    = $semester->nama;
+                }
+            }
+
+            $statusBaru = $isDraft ? 'draf' : 'menunggu';
+
+            $draf->update([
+                'data'   => $dataBaru,
+                'status' => $statusBaru,
+            ]);
+
+            if ($statusBaru === 'menunggu') {
+                // Kirim notifikasi ke admin.
+                foreach (\App\Models\User::where('role', 'admin')->get() as $admin) {
+                    pushNotif(
+                        $admin->id,
+                        'Surat Masuk',
+                        'Pengajuan "' . $jenisSurat->nama . '" dari ' . $user->name,
+                        '/admin/surat/' . $draf->id
+                    );
+                }
+                return redirect('/dosen/surat/' . $draf->id)
+                    ->with('success', 'Pengajuan surat berhasil dikirim dan sedang menunggu verifikasi.');
+            }
+
+            return redirect('/dosen/surat')
+                ->with('success', 'Draf berhasil diperbarui.');
+        });
+
+        /*
+        |--------------------------------------------------------------------------
         | BATALKAN SURAT (SELAMA MENUNGGU)
         |--------------------------------------------------------------------------
         */
@@ -978,6 +1127,133 @@ Route::post('/notifikasi/read-all', function () {
             ->firstOrFail();
 
             return view('mahasiswa.surat.detail', compact('surat'));
+        });
+
+        /*
+        |----------------------------------------------------------------------
+        | B-13 B: BUKA & EDIT DRAF SURAT MAHASISWA
+        |----------------------------------------------------------------------
+        | AC-1: Pengusul dapat membuka draf miliknya dengan semua isian terisi.
+        | AC-3: 403 Forbidden jika bukan milik akun yang login.
+        */
+        Route::get('/mahasiswa/surat/{id}/edit-draf', function ($id) {
+
+            $draf = SuratPengajuan::with(['jenisSurat'])
+                ->where('id', $id)
+                ->where('status', 'draf')
+                ->firstOrFail();
+
+            if ($draf->user_id !== Auth::id()) {
+                abort(403, 'Anda tidak memiliki akses ke draf surat milik akun lain.');
+            }
+
+            $jenisSurat = $draf->jenisSurat;
+
+            // B-13 B: selalu pakai form edit generik (lihat catatan di route dosen).
+            return view('surat.edit-draf', [
+                'jenisSurat'  => $jenisSurat,
+                'draf'        => $draf,
+                'targetUser'  => 'mahasiswa',
+                'action'      => url('/mahasiswa/surat/' . $draf->id . '/update-draf'),
+                'kembaliUrl'  => url('/mahasiswa/surat'),
+            ]);
+        });
+
+        /*
+        |----------------------------------------------------------------------
+        | B-13 B: UPDATE DRAF SURAT MAHASISWA (SIMPAN ULANG / KIRIM PENGAJUAN)
+        |----------------------------------------------------------------------
+        */
+        Route::post('/mahasiswa/surat/{id}/update-draf', function (Request $request, $id) {
+
+            $draf = SuratPengajuan::where('id', $id)
+                ->where('status', 'draf')
+                ->firstOrFail();
+
+            if ($draf->user_id !== Auth::id()) {
+                abort(403, 'Anda tidak memiliki akses ke draf surat milik akun lain.');
+            }
+
+            $jenisSurat  = $draf->jenisSurat;
+            $isDraft     = $request->input('action') === 'draft' || $request->has('simpan_draf');
+            $user        = Auth::user();
+
+            if (! $isDraft) {
+                $rules = [];
+                foreach ($jenisSurat->fields as $field) {
+                    $rules[$field] = 'required';
+                }
+                $request->validate($rules);
+            }
+
+            $fieldDiizinkan = array_values(array_unique(array_merge(
+                (array) ($jenisSurat->fields ?? []),
+                ['mahasiswa', 'anggota', 'anggota_tim', 'personel', 'label_lampiran']
+            )));
+
+            $identitasTerkunci = [
+                'nama'  => $user->name,
+                'npm'   => $user->npm,
+                'nidn'  => $user->nidn,
+                'prodi' => $user->prodi,
+            ];
+
+            $dataBaru = (array) ($draf->data ?? []);
+
+            foreach ($fieldDiizinkan as $field) {
+                if (! $request->exists($field)) {
+                    continue;
+                }
+                $nilai = $request->input($field);
+                if (is_array($nilai)) {
+                    $nilai = array_map(function ($item) {
+                        if (is_array($item)) {
+                            return array_map(fn ($v) => is_scalar($v) ? mb_substr(strip_tags((string)$v), 0, 500) : null, $item);
+                        }
+                        return is_scalar($item) ? mb_substr(strip_tags((string)$item), 0, 500) : null;
+                    }, $nilai);
+                } else {
+                    $nilai = mb_substr(strip_tags((string)$nilai), 0, 500);
+                }
+                $dataBaru[$field] = array_key_exists($field, $identitasTerkunci) ? $identitasTerkunci[$field] : $nilai;
+            }
+
+            foreach ($identitasTerkunci as $field => $nilai) {
+                if (in_array($field, $fieldDiizinkan, true)) {
+                    $dataBaru[$field] = $nilai;
+                }
+            }
+
+            if (array_key_exists('semester', $dataBaru) && is_numeric($dataBaru['semester'])) {
+                $semester = \App\Models\MasterData::findSemester($dataBaru['semester']);
+                if ($semester) {
+                    $dataBaru['semester_id'] = $semester->id;
+                    $dataBaru['semester']    = $semester->nama;
+                }
+            }
+
+            $statusBaru = $isDraft ? 'draf' : 'menunggu';
+
+            $draf->update([
+                'data'   => $dataBaru,
+                'status' => $statusBaru,
+            ]);
+
+            if ($statusBaru === 'menunggu') {
+                foreach (\App\Models\User::where('role', 'admin')->get() as $admin) {
+                    pushNotif(
+                        $admin->id,
+                        'Surat Masuk',
+                        'Pengajuan "' . $jenisSurat->nama . '" dari ' . $user->name,
+                        '/admin/surat/' . $draf->id
+                    );
+                }
+                return redirect('/mahasiswa/surat/' . $draf->id)
+                    ->with('success', 'Pengajuan surat berhasil dikirim dan sedang menunggu verifikasi.');
+            }
+
+            return redirect('/mahasiswa/surat')
+                ->with('success', 'Draf berhasil diperbarui.');
         });
 
         /*

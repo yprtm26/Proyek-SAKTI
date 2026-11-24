@@ -27,7 +27,7 @@
     </div>
 
     {{-- ================= FILTER STATUS ================= --}}
-    <div class="mb-4 flex items-center gap-2 text-sm">
+    <div class="mb-4 flex flex-wrap items-center gap-2 text-sm">
 
         <span class="text-gray-500">Tampilkan:</span>
 
@@ -35,6 +35,13 @@
         class="px-3 py-1 rounded-full border
                 {{ request('status')=='' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-600 hover:bg-gray-100' }}">
             Semua
+        </a>
+
+        {{-- B-13 B: Tab filter Draf --}}
+        <a href="/mahasiswa/surat?status=draf"
+        class="px-3 py-1 rounded-full border
+                {{ request('status')=='draf' ? 'bg-gray-600 text-white border-gray-600' : 'border-gray-300 text-gray-600 hover:bg-gray-100' }}">
+            Draf
         </a>
 
         <a href="/mahasiswa/surat?status=menunggu"
@@ -81,16 +88,26 @@
                         <td class="px-4 py-3">
                             <span class="px-2 py-1 rounded text-white text-xs font-medium
                                 {{ $surat->status === 'disetujui_final' ? 'bg-green-600' :
-                                   ($surat->status === 'ditolak' ? 'bg-red-600' : 'bg-orange-500') }}">
+                                   ($surat->status === 'ditolak' ? 'bg-red-600' :
+                                   ($surat->status === 'draf' ? 'bg-gray-500' : 'bg-orange-500')) }}">
                                 {{ statusMahasiswa($surat->status) }}
                             </span>
                         </td>
-                        <td class="px-4 py-3">
-                            <a href="/mahasiswa/surat/{{ $surat->id }}"
-                               class="inline-block bg-blue-100 text-blue-700 hover:bg-blue-200 
-                                px-3 py-1 rounded text-xs font-semibold">
-                                Detail
-                            </a>
+                        <td class="px-4 py-3 flex flex-wrap gap-1">
+                            @if($surat->status === 'draf')
+                                {{-- B-13 B: Tombol Edit Draf --}}
+                                <a href="/mahasiswa/surat/{{ $surat->id }}/edit-draf"
+                                   class="inline-block bg-amber-100 text-amber-700 hover:bg-amber-200
+                                    px-3 py-1 rounded text-xs font-semibold">
+                                    Edit Draf
+                                </a>
+                            @else
+                                <a href="/mahasiswa/surat/{{ $surat->id }}"
+                                   class="inline-block bg-blue-100 text-blue-700 hover:bg-blue-200
+                                    px-3 py-1 rounded text-xs font-semibold">
+                                    Detail
+                                </a>
+                            @endif
                         </td>
                     </tr>
                 @empty

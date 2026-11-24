@@ -24,38 +24,47 @@
     </div>
 
     {{-- ================= FILTER STATUS ================= --}}
-    <div class="mt-4 mb-4 flex items-center gap-2 text-sm">
+    <div class="mt-4 mb-4 flex flex-wrap items-center gap-2 text-sm">
 
         <span class="text-gray-500">Tampilkan:</span>
 
         <a href="/dosen/surat"
         class="px-3 py-1 rounded-full border
-                {{ request('status')=='' 
-                        ? 'bg-blue-600 text-white border-blue-600' 
+                {{ request('status')==''
+                        ? 'bg-blue-600 text-white border-blue-600'
                         : 'border-gray-300 text-gray-600 hover:bg-gray-100' }}">
             Semua
         </a>
 
+        {{-- B-13 B: Tab filter Draf --}}
+        <a href="/dosen/surat?status=draf"
+        class="px-3 py-1 rounded-full border
+                {{ request('status')=='draf'
+                        ? 'bg-gray-600 text-white border-gray-600'
+                        : 'border-gray-300 text-gray-600 hover:bg-gray-100' }}">
+            Draf
+        </a>
+
         <a href="/dosen/surat?status=menunggu"
         class="px-3 py-1 rounded-full border
-                {{ request('status')=='menunggu' 
-                        ? 'bg-orange-500 text-white border-orange-500' 
+                {{ request('status')=='menunggu'
+                        ? 'bg-orange-500 text-white border-orange-500'
                         : 'border-gray-300 text-gray-600 hover:bg-gray-100' }}">
             Menunggu
         </a>
 
         <a href="/dosen/surat?status=disetujui_final"
         class="px-3 py-1 rounded-full border
-                {{ request('status')=='disetujui_final' 
-                        ? 'bg-green-600 text-white border-green-600' 
+                {{ request('status')=='disetujui_final'
+                        ? 'bg-green-600 text-white border-green-600'
                         : 'border-gray-300 text-gray-600 hover:bg-gray-100' }}">
             Disetujui
         </a>
 
         <a href="/dosen/surat?status=ditolak"
         class="px-3 py-1 rounded-full border
-                {{ request('status')=='ditolak' 
-                        ? 'bg-red-600 text-white border-red-600' 
+                {{ request('status')=='ditolak'
+                        ? 'bg-red-600 text-white border-red-600'
                         : 'border-gray-300 text-gray-600 hover:bg-gray-100' }}">
             Ditolak
         </a>
@@ -86,16 +95,26 @@
                         <td class="px-4 py-3">
                             <span class="px-2 py-1 rounded text-white text-xs
                                 {{ $surat->status === 'disetujui_final' ? 'bg-green-500' :
-                                   ($surat->status === 'ditolak' ? 'bg-red-500' : 'bg-orange-500') }}">
+                                   ($surat->status === 'ditolak' ? 'bg-red-500' :
+                                   ($surat->status === 'draf' ? 'bg-gray-500' : 'bg-orange-500')) }}">
                                 {{ statusDosen($surat->status) }}
                             </span>
                         </td>
-                        <td class="px-4 py-3">
-                            <a href="/dosen/surat/{{ $surat->id }}"
-                               class="inline-block bg-blue-100 text-blue-700 hover:bg-blue-200 
-                                px-3 py-1 rounded text-xs font-semibold">
-                                Detail
-                            </a>
+                        <td class="px-4 py-3 flex flex-wrap gap-1">
+                            @if($surat->status === 'draf')
+                                {{-- B-13 B: Tombol Edit Draf --}}
+                                <a href="/dosen/surat/{{ $surat->id }}/edit-draf"
+                                   class="inline-block bg-amber-100 text-amber-700 hover:bg-amber-200
+                                    px-3 py-1 rounded text-xs font-semibold">
+                                    Edit Draf
+                                </a>
+                            @else
+                                <a href="/dosen/surat/{{ $surat->id }}"
+                                   class="inline-block bg-blue-100 text-blue-700 hover:bg-blue-200
+                                    px-3 py-1 rounded text-xs font-semibold">
+                                    Detail
+                                </a>
+                            @endif
                         </td>
                     </tr>
                 @empty

@@ -171,6 +171,14 @@
         </form>
     @endif
 
+    {{-- B-13 B: Tombol edit jika draf --}}
+    @if($surat->status === 'draf')
+        <a href="/mahasiswa/surat/{{ $surat->id }}/edit-draf"
+           class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded font-semibold">
+            Edit Draf
+        </a>
+    @endif
+
     @if($surat->status === 'disetujui_final')
         <a href="/mahasiswa/surat/{{ $surat->id }}/pdf"
            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
