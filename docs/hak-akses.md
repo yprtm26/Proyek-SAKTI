@@ -103,6 +103,10 @@ boleh mengakses menu dan endpoint apa pada aplikasi SAKTI.
 | Method | Endpoint | Aturan tambahan |
 |--------|----------|-----------------|
 | GET | `/api/template-surat` | Hanya template `aktif`; pengusul hanya boleh melihat template milik role-nya sendiri. Filter `target_user` ke role lain ditolak **403**. Filter `target_user` selain `mahasiswa`/`dosen` ditolak **422**. |
+| DELETE | `/surat/{id}/draf` | Hanya pemilik draf (`mahasiswa`/`dosen`) dan hanya status `draf`. Akses lintas akun ditolak **403**; status non-draf ditolak **422**. |
+| GET | `/riwayat-surat` | Daftar riwayat pengajuan khusus akun `mahasiswa`/`dosen` yang sedang login. |
+| GET | `/api/riwayat-surat` | Endpoint JSON daftar riwayat pengajuan khusus akun `mahasiswa`/`dosen` yang sedang login. |
+| GET | `/surat/{id}/pratinjau` | Pratinjau HTML terformat; pengusul hanya untuk surat miliknya (**403** jika akun lain), staf (`admin`/`kaprodi`/`dekan`) mendapat **404** untuk draf atau ID tidak ada. |
 
 > Endpoint ini khusus halaman pengusul. Staf yang perlu melihat seluruh template
 > memakai halaman `/admin/template-surat`.
@@ -140,6 +144,8 @@ boleh mengakses menu dan endpoint apa pada aplikasi SAKTI.
 | GET | `/admin/surat` |
 | GET | `/admin/surat/{id}` |
 | POST | `/admin/surat/{id}/setujui` |
+| POST | `/admin/surat/{id}/verifikasi` |
+| POST | `/admin/surat/{id}/revisi` |
 | POST | `/admin/surat/{id}/tolak` |
 | POST | `/admin/surat/{id}/finalisasi` |
 | GET | `/admin/surat/export/excel` |

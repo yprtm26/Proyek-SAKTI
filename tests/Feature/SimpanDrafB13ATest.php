@@ -210,4 +210,42 @@ class SimpanDrafB13ATest extends TestCase
             ->assertSee('formaction="' . url('/surat/draf') . '"', false)
             ->assertSee('formnovalidate', false);
     }
+
+    public function test_form_khusus_mahasiswa_dan_dosen_memiliki_tombol_simpan_draf(): void
+    {
+        $mahasiswa = $this->makeUser('mahasiswa');
+        $dosen = $this->makeUser('dosen');
+
+        $suratAktif = JenisSurat::create([
+            'nama' => 'Surat Keterangan Aktif',
+            'slug' => 'surat-keterangan-aktif',
+            'target_user' => 'mahasiswa',
+            'fields' => ['semester', 'tahun_akademik'],
+            'alur' => ['admin', 'kaprodi'],
+            'aktif' => true,
+        ]);
+
+        $suratJuri = JenisSurat::create([
+            'nama' => 'Surat Tugas Juri Lomba',
+            'slug' => 'surat-tugas-juri-lomba',
+            'target_user' => 'dosen',
+            'fields' => ['nama_lomba', 'tanggal_lomba', 'waktu_lomba', 'tempat_lomba'],
+            'alur' => ['admin', 'dekan'],
+            'aktif' => true,
+        ]);
+
+        $this->actingAs($mahasiswa)
+            ->get('/mahasiswa/surat/ajukan/' . $suratAktif->id)
+            ->assertOk()
+            ->assertSee('Simpan Draf')
+            ->assertSee('name="jenis_surat_id"', false)
+            ->assertSee('formaction="' . url('/surat/draf') . '"', false);
+
+        $this->actingAs($dosen)
+            ->get('/dosen/surat/ajukan/' . $suratJuri->id)
+            ->assertOk()
+            ->assertSee('Simpan Draf')
+            ->assertSee('name="jenis_surat_id"', false)
+            ->assertSee('formaction="' . url('/surat/draf') . '"', false);
+    }
 }

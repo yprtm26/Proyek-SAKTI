@@ -162,7 +162,7 @@
 
         <p class="text-xs text-gray-500 mb-3">
             Setiap field akan menjadi kolom isian wajib pada form pengajuan surat.
-            Gunakan huruf kecil dan garis bawah, contoh: <span class="font-medium">tahun_akademik</span>.
+            Gunakan huruf kecil dan garis bawah, contoh: <span class="font-medium">tahun_akademik</span> atau <span class="font-medium">personel</span> (untuk tabel anggota dan peran kegiatan).
         </p>
 
         <div id="daftarField" class="space-y-2">

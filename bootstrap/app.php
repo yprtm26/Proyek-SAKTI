@@ -111,9 +111,11 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 500);
             }
 
-            // Tampilkan halaman error 500 umum yang aman tanpa membocorkan stack trace
-            return response()->view('errors.500', [
-                'incidentId' => $incidentId,
-            ], 500);
+            // Jangan bergantung pada view error kustom; error handler harus tetap
+            // bisa merender respons meski view aplikasi gagal.
+            return response(
+                'Terjadi kendala teknis. Laporkan ID kejadian: '.$incidentId,
+                500
+            );
         });
     })->create();

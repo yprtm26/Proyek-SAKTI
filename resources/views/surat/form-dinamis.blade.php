@@ -91,7 +91,7 @@
             @endphp
 
             <div>
-                @if($field !== 'semester')
+                @if($field !== 'semester' && $field !== 'personel')
                     <label for="field-{{ $field }}" class="block text-sm font-medium text-gray-700 mb-1">
                         {{ $label }}
                         @if(! $terkunci)
@@ -107,6 +107,16 @@
                            value="{{ $nilai }}"
                            readonly
                            class="w-full border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed">
+                @elseif($field === 'personel')
+                    <x-personel-list
+                        name="personel"
+                        :id="'field-' . $field"
+                        :label="$label"
+                        :rows="old('personel', [])"
+                        :prefill-user="true"
+                        default-peran=""
+                        required
+                    />
                 @elseif($field === 'semester')
                     @php
                         $semesterLama = old('semester')

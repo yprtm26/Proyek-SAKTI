@@ -94,12 +94,13 @@
     </div>
 </div>
 
-<div class="flex justify-end gap-3">
+<div class="flex flex-wrap justify-end gap-3">
     <a href="/mahasiswa/dashboard"
-       class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded">
+       class="sakti-touch-target bg-gray-200 hover:bg-gray-300 text-gray-900 px-4 py-2 rounded-lg font-medium">
         Batal
     </a>
-    <button class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded">
+    <x-tombol-simpan-draf :jenis-surat="$jenisSurat" />
+    <button type="submit" class="sakti-touch-target bg-green-700 hover:bg-green-800 text-white px-6 py-2 rounded-lg font-semibold">
         Ajukan Surat
     </button>
 </div>

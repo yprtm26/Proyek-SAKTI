@@ -32,6 +32,8 @@
 
     $fields   = $jenisSurat->fields ?? [];
     $dataLama = (array) ($draf->data ?? []);
+    $personelLama = \App\Support\SuratPersonelSync::readFromSurat($draf);
+    $tampilkanPersonelTerpisah = ! in_array('personel', (array) $fields, true) && count($personelLama) > 0;
 @endphp
 
 <main class="max-w-3xl mx-auto p-6">
@@ -118,7 +120,7 @@
             @endphp
 
             <div>
-                @if($field !== 'semester')
+                @if($field !== 'semester' && $field !== 'personel')
                     <label for="edit-{{ $field }}" class="block text-sm font-medium text-gray-700 mb-1">
                         {{ $label }}
                         @if(! $terkunci)<span class="text-red-500">*</span>@endif
@@ -132,6 +134,15 @@
                            value="{{ $nilai }}"
                            readonly
                            class="w-full border rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed">
+                @elseif($field === 'personel')
+                    <x-personel-list
+                        name="personel"
+                        :id="'edit-' . $field"
+                        :label="$label"
+                        :rows="old('personel', $personelLama)"
+                        :prefill-user="false"
+                        required
+                    />
                 @elseif($field === 'semester')
                     @php
                         // drafts dari B-13 A menyimpan ID semester di `semester`
@@ -200,12 +211,24 @@
             <p class="text-sm text-gray-500">Template ini belum memiliki field isian.</p>
         @endforelse
 
+        @if($tampilkanPersonelTerpisah)
+            <x-personel-list
+                name="personel"
+                id="edit-personel"
+                label="Daftar Anggota dan Peran Kegiatan"
+                :rows="old('personel', $personelLama)"
+                :prefill-user="false"
+                required
+            />
+        @endif
+
         {{-- B-13 B: pertahankan data lama yang bukan field template (mis. anggota,
-             personel, referensi master) agar tidak hilang saat draf disimpan ulang. --}}
+             referensi master) agar tidak hilang saat draf disimpan ulang. --}}
         @foreach($dataLama as $kunci => $nilaiLama)
             @if(! in_array($kunci, (array) $fields, true)
                 && ! array_key_exists($kunci, $fieldTerkunci)
-                && $kunci !== 'jenis_surat_id')
+                && $kunci !== 'jenis_surat_id'
+                && $kunci !== 'personel')
                 <input type="hidden"
                        name="{{ $kunci }}"
                        value="{{ is_array($nilaiLama) ? json_encode($nilaiLama) : $nilaiLama }}">
@@ -213,37 +236,48 @@
         @endforeach
 
         {{-- AKSI --}}
-        <div class="flex flex-wrap justify-end gap-3 pt-4 border-t">
-            <a href="{{ $kembaliUrl }}"
-               class="min-h-[44px] px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium inline-flex items-center justify-center transition-colors">
-                Kembali
-            </a>
-
-            {{-- Simpan Draf: perbarui draf tanpa validasi ketat --}}
-            <button type="submit"
-                    name="action"
-                    value="draft"
-                    formaction="{{ $action }}"
-                    formnovalidate
-                    class="btn-simpan-draf min-h-[44px] px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 inline-flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                </svg>
-                <span>Simpan Draf</span>
+        <div class="flex flex-wrap justify-between items-center gap-3 pt-4 border-t">
+            <button type="button"
+                    data-delete-draft-trigger
+                    data-delete-url="/surat/{{ $draf->id }}/draf"
+                    data-surat-name="{{ $jenisSurat->nama }}"
+                    class="sakti-touch-target px-4 py-2 rounded-lg bg-red-700 hover:bg-red-800 text-white text-sm font-semibold">
+                Hapus Draf
             </button>
 
-            {{-- Kirim Pengajuan: validasi penuh, ubah status ke 'menunggu' --}}
-            <button type="submit"
-                    name="action"
-                    value="submit"
-                    class="min-h-[44px] px-5 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 inline-flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-                <span>Kirim Pengajuan</span>
-            </button>
+            <div class="flex flex-wrap justify-end gap-3">
+                <a href="{{ $kembaliUrl }}"
+                   class="min-h-[44px] px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium inline-flex items-center justify-center transition-colors">
+                    Kembali
+                </a>
+
+                {{-- Simpan Draf: perbarui draf tanpa validasi ketat --}}
+                <button type="submit"
+                        name="action"
+                        value="draft"
+                        formaction="{{ $action }}"
+                        formnovalidate
+                        class="btn-simpan-draf min-h-[44px] px-5 py-2 rounded-lg bg-amber-700 hover:bg-amber-800 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-700 inline-flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    <span>Simpan Draf</span>
+                </button>
+
+                {{-- Kirim Pengajuan: validasi penuh, ubah status ke 'menunggu' --}}
+                <button type="submit"
+                        name="action"
+                        value="submit"
+                        class="min-h-[44px] px-5 py-2 rounded-lg bg-green-700 hover:bg-green-800 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-700 inline-flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    <span>Kirim Pengajuan</span>
+                </button>
+            </div>
         </div>
     </form>
 
 </main>
+<x-modal-hapus-draf />
 @endsection

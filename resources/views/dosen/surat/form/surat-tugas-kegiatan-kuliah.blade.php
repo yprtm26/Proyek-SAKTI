@@ -183,6 +183,16 @@
                    required>
         </div>
 
+        {{-- B-10 B: Daftar Anggota dan Peran Kegiatan --}}
+        <x-personel-list
+            name="personel"
+            label="Daftar Anggota dan Peran Kegiatan"
+            :rows="old('personel', [])"
+            :prefill-user="true"
+            default-peran="Ketua / Penanggung Jawab"
+            required
+        />
+
         {{-- ACTION --}}
         <div class="flex flex-wrap justify-end gap-3 pt-4 border-t">
             <a href="{{ url('/dosen/dashboard') }}"

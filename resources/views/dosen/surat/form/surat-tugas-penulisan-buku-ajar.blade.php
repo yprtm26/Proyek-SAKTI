@@ -139,16 +139,18 @@
         </div>
 
         {{-- ACTION --}}
-        <div class="flex justify-end gap-3 pt-4">
-            <button type="submit"
-                    class="px-5 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold">
-                Ajukan Surat
-            </button>
-
+        <div class="flex flex-wrap justify-end gap-3 pt-4">
             <a href="{{ url('/dosen/dashboard') }}"
-               class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">
+               class="sakti-touch-target px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-900 font-medium">
                 Batal
             </a>
+
+            <x-tombol-simpan-draf :jenis-surat="$jenisSurat" />
+
+            <button type="submit"
+                    class="sakti-touch-target px-5 py-2 rounded-lg bg-green-700 hover:bg-green-800 text-white font-semibold">
+                Ajukan Surat
+            </button>
         </div>
 
     </form>

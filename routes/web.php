@@ -21,7 +21,10 @@ use App\Models\Semester;
 use App\Models\SuratPengajuan;
 use App\Models\SumberDaya;
 use App\Support\DateRange;
+use App\Support\DynamicSuratValidator;
 use App\Support\MasterData;
+use App\Support\SuratPersonelSync;
+use App\Support\SuratPreview;
 use App\Support\TimeRange;
 use App\Exports\SuratPengajuanExport;
 use App\Exports\DisposisiExport;
@@ -208,6 +211,10 @@ Route::post('/surat/draf', function (Request $request) {
         'status'         => 'draf',
     ]);
 
+    if ($request->has('personel') && is_array($request->input('personel'))) {
+        SuratPersonelSync::syncToSurat($draf, $request->input('personel'));
+    }
+
     if ($request->expectsJson()) {
         return response()->json([
             'status'  => 'success',
@@ -218,6 +225,164 @@ Route::post('/surat/draf', function (Request $request) {
 
     return back()->with('success', 'Draf berhasil disimpan. Anda dapat melanjutkan pengisian nanti.');
 })->middleware('role:mahasiswa,dosen')->name('surat.draf.store');
+
+/*
+|--------------------------------------------------------------------------
+| B-14: PENGHAPUSAN PERMANEN DRAF PENGAJUAN SURAT
+|--------------------------------------------------------------------------
+| Hanya pemilik draf yang dapat menghapus, dan hanya surat berstatus 'draf'
+| yang diizinkan dihapus permanen. Surat yang sudah diajukan ditolak 422.
+*/
+$hapusDrafHandler = function (Request $request, $id) {
+    $surat = SuratPengajuan::findOrFail($id);
+
+    if ((int) $surat->user_id !== (int) Auth::id()) {
+        abort(403, 'Anda tidak memiliki akses untuk menghapus draf milik akun lain.');
+    }
+
+    if ($surat->status !== 'draf') {
+        $pesan = 'Surat yang sudah diajukan atau bukan berstatus Draf tidak dapat dihapus.';
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $pesan,
+            ], 422);
+        }
+
+        return back()->withErrors(['hapus_draf' => $pesan])->with('error', $pesan);
+    }
+
+    $surat->delete();
+
+    if ($request->expectsJson()) {
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Draf pengajuan surat berhasil dihapus permanen.',
+        ]);
+    }
+
+    $redirectUrl = Auth::user()->role === 'dosen' ? '/dosen/surat' : '/mahasiswa/surat';
+
+    return redirect($redirectUrl)
+        ->with('success', 'Draf pengajuan surat berhasil dihapus permanen.');
+};
+
+Route::delete('/surat/{id}/draf', $hapusDrafHandler)
+    ->middleware('role:mahasiswa,dosen')
+    ->name('surat.draf.destroy');
+
+/*
+|--------------------------------------------------------------------------
+| B-27: ENDPOINT TERPADU RIWAYAT PENGAJUAN SURAT PENGUSUL
+|--------------------------------------------------------------------------
+*/
+Route::get('/riwayat-surat', function (Request $request) {
+    $user = Auth::user();
+    $baseQuery = SuratPengajuan::where('user_id', $user->id);
+    $totalSemuaSurat = (clone $baseQuery)->count();
+
+    $query = SuratPengajuan::with('jenisSurat')->where('user_id', $user->id);
+    if ($request->status) {
+        $query->where('status', $request->status);
+    }
+
+    $suratList = $query->orderBy('created_at', 'desc')->get();
+    $view = $user->role === 'dosen' ? 'dosen.surat.log' : 'mahasiswa.surat.log';
+
+    return view($view, compact('suratList', 'totalSemuaSurat'));
+})->middleware('role:mahasiswa,dosen')->name('surat.riwayat');
+
+Route::get('/api/riwayat-surat', function (Request $request) {
+    $user = Auth::user();
+    $query = SuratPengajuan::with('jenisSurat')->where('user_id', $user->id);
+
+    if ($request->status) {
+        $query->where('status', $request->status);
+    }
+
+    $items = $query->orderBy('created_at', 'desc')->get()->map(function (SuratPengajuan $surat) use ($user) {
+        $statusLabel = $user->role === 'dosen'
+            ? statusDosen($surat->status)
+            : statusMahasiswa($surat->status);
+
+        return [
+            'id' => $surat->id,
+            'nomor_surat' => $surat->nomor_surat,
+            'jenis_surat' => $surat->jenisSurat?->nama,
+            'status' => $surat->status,
+            'status_label' => $statusLabel,
+            'catatan_revisi' => $surat->catatan_revisi,
+            'alasan_tolak' => $surat->alasan_tolak,
+            'tanggal' => $surat->created_at?->format('d/m/Y H:i'),
+        ];
+    });
+
+    return response()->json([
+        'status' => 'success',
+        'data' => $items,
+    ]);
+})->middleware('role:mahasiswa,dosen')->name('api.surat.riwayat');
+
+/*
+|--------------------------------------------------------------------------
+| B-28: PRATINJAU (PREVIEW) DOKUMEN SURAT TERFORMAT
+|--------------------------------------------------------------------------
+*/
+Route::get('/surat/{id}/pratinjau', function (Request $request, $id) {
+    $surat = SuratPreview::authorizeAndFind($id, Auth::user());
+
+    if ($request->boolean('fragment') || $request->ajax()) {
+        return view('surat.partials.pratinjau-content', compact('surat'));
+    }
+
+    return view('surat.pratinjau', compact('surat'));
+})->middleware('role:mahasiswa,dosen,admin,kaprodi,dekan')->name('surat.pratinjau');
+
+/*
+|--------------------------------------------------------------------------
+| B-10 B: ENDPOINT SIMPAN BULK & AMBIL DAFTAR ANGGOTA KEGIATAN
+|--------------------------------------------------------------------------
+*/
+Route::get('/surat/{id}/personel', function ($id) {
+    $surat = SuratPengajuan::with('personel')->findOrFail($id);
+
+    if ($surat->user_id !== Auth::id()) {
+        abort(403, 'Anda tidak memiliki akses ke daftar anggota surat milik akun lain.');
+    }
+
+    return response()->json([
+        'status' => 'success',
+        'data' => SuratPersonelSync::readFromSurat($surat),
+    ]);
+})->middleware(['auth', 'role:mahasiswa,dosen'])->name('surat.personel.index');
+
+Route::post('/surat/{id}/personel', function (Request $request, $id) {
+    $surat = SuratPengajuan::findOrFail($id);
+
+    if ($surat->user_id !== Auth::id()) {
+        abort(403, 'Anda tidak memiliki akses untuk mengubah anggota surat milik akun lain.');
+    }
+
+    if (! in_array($surat->status, ['draf', 'menunggu'], true)) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Daftar anggota hanya dapat diubah saat surat berstatus draf atau menunggu.',
+        ], 422);
+    }
+
+    $rows = SuratPersonelSync::validateRows($request, true);
+    SuratPersonelSync::syncToSurat($surat, $rows);
+
+    if ($request->expectsJson()) {
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Daftar anggota kegiatan berhasil disimpan.',
+            'data' => SuratPersonelSync::readFromSurat($surat->fresh()),
+        ]);
+    }
+
+    return back()->with('success', 'Daftar anggota kegiatan berhasil disimpan.');
+})->middleware(['auth', 'role:mahasiswa,dosen'])->name('surat.personel.bulk');
 
 /*
 
@@ -474,7 +639,7 @@ Route::post('/notifikasi/read-all', function () {
 | DOSEN
 |-------------------------------------------------------------------------- --BARU--
 */
-    Route::middleware('role:dosen')->group(function () {
+    Route::middleware('role:dosen')->group(function () use ($hapusDrafHandler) {
 
         /*
         |--------------------------------------------------------------------------
@@ -538,32 +703,28 @@ Route::post('/notifikasi/read-all', function () {
                 ->untukPengguna('dosen')
                 ->findOrFail($id);
 
-            // VALIDASI DINAMIS & ALLOWLIST (MODE A)
-            $rules = [];
-            $customMessages = [];
-
-            // Field identitas ini dikunci dan ditimpa dari akun login di
-            // bawah, sehingga nilai dari request tidak boleh memblokir
-            // pengajuan hanya karena formatnya palsu.
+            // VALIDASI DINAMIS & ALLOWLIST (MODE A + B-08 + B-09 + B-10 A)
             $lockedIdentityFields = ['nama_dosen', 'nama_ditugaskan', 'no_nip', 'prodi'];
+            $fields = (array) ($jenisSurat->fields ?? []);
 
-            foreach ($jenisSurat->fields as $field) {
-                $rules[$field] = 'required';
+            $validated = DynamicSuratValidator::validate($request, $jenisSurat, $lockedIdentityFields);
+
+            $personelRows = null;
+            if (SuratPersonelSync::shouldValidate($request, $fields)) {
+                $personelRows = SuratPersonelSync::validateRows($request, true);
             }
 
-            $validated = $request->validate($rules);
-
-            // Kunci identitas utama agar tidak bisa dimanipulasi dari request
-            if (isset($validated['nama_dosen'])) {
+            // B-02: Kunci identitas utama agar tidak bisa dimanipulasi dari request
+            if (in_array('nama_dosen', $fields, true)) {
                 $validated['nama_dosen'] = Auth::user()->name;
             }
-            if (isset($validated['nama_ditugaskan'])) {
+            if (in_array('nama_ditugaskan', $fields, true)) {
                 $validated['nama_ditugaskan'] = Auth::user()->name;
             }
-            if (array_key_exists('no_nip', $validated)) {
+            if (in_array('no_nip', $fields, true)) {
                 $validated['no_nip'] = Auth::user()->nidn;
             }
-            if (isset($validated['prodi'])) {
+            if (in_array('prodi', $fields, true) && ! array_key_exists('prodi_id', $validated)) {
                 $validated['prodi'] = Auth::user()->prodi;
             }
 
@@ -604,6 +765,10 @@ Route::post('/notifikasi/read-all', function () {
                 'data' => $validated,
                 'status' => 'menunggu',
             ]);
+
+            if ($personelRows !== null) {
+                SuratPersonelSync::syncToSurat($surat, $personelRows);
+            }
 
             // NOTIFIKASI ADMIN
             foreach (\App\Models\User::where('role', 'admin')->get() as $admin) {
@@ -712,13 +877,21 @@ Route::post('/notifikasi/read-all', function () {
             $user        = Auth::user();
 
             // ===== VALIDASI =====
+            $personelRows = null;
             if (! $isDraft) {
                 // Kirim pengajuan — validasi penuh wajib.
                 $rules = [];
                 foreach ($jenisSurat->fields as $field) {
+                    if ($field === 'personel') {
+                        continue;
+                    }
                     $rules[$field] = 'required';
                 }
                 $request->validate($rules);
+
+                if (SuratPersonelSync::shouldValidate($request, (array) ($jenisSurat->fields ?? []))) {
+                    $personelRows = SuratPersonelSync::validateRows($request, true);
+                }
             }
 
             // Allowlist field + sanitasi XSS
@@ -788,6 +961,12 @@ Route::post('/notifikasi/read-all', function () {
                 'status' => $statusBaru,
             ]);
 
+            if ($personelRows !== null) {
+                SuratPersonelSync::syncToSurat($draf, $personelRows);
+            } elseif ($isDraft && $request->has('personel') && is_array($request->input('personel'))) {
+                SuratPersonelSync::syncToSurat($draf, $request->input('personel'));
+            }
+
             if ($statusBaru === 'menunggu') {
                 // Kirim notifikasi ke admin.
                 foreach (\App\Models\User::where('role', 'admin')->get() as $admin) {
@@ -826,10 +1005,14 @@ Route::post('/notifikasi/read-all', function () {
 
         /*
         |--------------------------------------------------------------------------
-        | LOG / RIWAYAT SURAT DOSEN
+        | LOG / RIWAYAT SURAT DOSEN (B-27) & HAPUS DRAF DOSEN (B-14)
         |--------------------------------------------------------------------------
         */
+        Route::delete('/dosen/surat/{id}/draf', $hapusDrafHandler)->name('dosen.surat.draf.destroy');
+
         Route::get('/dosen/surat', function (Request $request) {
+
+            $totalSemuaSurat = SuratPengajuan::where('user_id', Auth::id())->count();
 
             $query = SuratPengajuan::with('jenisSurat')
                 ->where('user_id', Auth::id());
@@ -841,7 +1024,7 @@ Route::post('/notifikasi/read-all', function () {
             $suratList = $query
                 ->orderBy('created_at', 'desc')
                 ->get();
-            return view('dosen.surat.log', compact('suratList'));
+            return view('dosen.surat.log', compact('suratList', 'totalSemuaSurat'));
         });
 
     });
@@ -853,7 +1036,7 @@ Route::post('/notifikasi/read-all', function () {
     | MAHASISWA
     |--------------------------------------------------------------------------
     */
-    Route::middleware('role:mahasiswa')->group(function () {
+    Route::middleware('role:mahasiswa')->group(function () use ($hapusDrafHandler) {
 
         /*
         |----------------------------------------------------------------------
@@ -955,20 +1138,19 @@ Route::post('/notifikasi/read-all', function () {
             // Surat Permohonan Magang
             elseif ($jenisSurat->slug === 'surat-permohonan-magang') {
 
-                $validated = $request->validate([
+                $magangDateFields = ['tanggal_mulai', 'tanggal_selesai'];
+                $validated = $request->validate(array_merge([
                     'tipe_magang' => 'required|in:reguler-ti,reguler-pdsi,mandiri',
                     'perihal' => 'required|string',
                     'kepada_yth' => 'required|string',
                     'nama_mitra' => 'required|string',
                     'alamat_mitra' => 'required|string',
-                    'tanggal_mulai' => 'required|date',
-                    'tanggal_selesai' => 'required|date|after_or_equal:tanggal_mulai',
                     'mahasiswa' => 'required|array|min:1',
                     'mahasiswa.*.npm' => 'required|string',
                     'mahasiswa.*.nama' => 'required|string',
-                    'mahasiswa.*.semester' => 'required|string',
+                    'mahasiswa.*.semester' => MasterData::semesterRules(true, 'tingkat'),
                     'mahasiswa.*.no_kontak' => 'required|string',
-                ]);
+                ], DateRange::rules($magangDateFields)), DateRange::messages($magangDateFields));
 
                 // VALIDASI PRODI
                 if (
@@ -1002,27 +1184,26 @@ Route::post('/notifikasi/read-all', function () {
             // DEFAULT: SURAT LAIN
             else {
 
-                $rules = [];
-                $customMessages = [];
-
                 // Identitas pengusul dikunci dan ditimpa dari akun login.
                 $lockedIdentityFields = ['nama', 'npm', 'prodi'];
+                $fields = (array) ($jenisSurat->fields ?? []);
 
-                foreach ($jenisSurat->fields as $field) {
-                    $rules[$field] = 'required';
+                $validated = DynamicSuratValidator::validate($request, $jenisSurat, $lockedIdentityFields);
+
+                $personelRows = null;
+                if (SuratPersonelSync::shouldValidate($request, $fields)) {
+                    $personelRows = SuratPersonelSync::validateRows($request, true);
                 }
 
-                $validated = $request->validate($rules);
-
-                // Identitas pengusul dikunci di server, bukan hanya
+                // B-02/B-06: Identitas pengusul dikunci di server, bukan hanya
                 // read-only di tampilan, agar tidak bisa dimanipulasi dari request.
-                if (array_key_exists('nama', $validated)) {
+                if (in_array('nama', $fields, true)) {
                     $validated['nama'] = Auth::user()->name;
                 }
-                if (array_key_exists('npm', $validated)) {
+                if (in_array('npm', $fields, true)) {
                     $validated['npm'] = Auth::user()->npm;
                 }
-                if (array_key_exists('prodi', $validated)) {
+                if (in_array('prodi', $fields, true)) {
                     $validated['prodi'] = Auth::user()->prodi;
                 }
 
@@ -1054,6 +1235,10 @@ Route::post('/notifikasi/read-all', function () {
                 'data' => $data,
                 'status' => 'menunggu',
             ]);
+
+            if (isset($personelRows) && is_array($personelRows)) {
+                SuratPersonelSync::syncToSurat($surat, $personelRows);
+            }
 
             // ================= SIMPAN LAMPIRAN =================
             if ($request->hasFile('lampiran')) {
@@ -1178,12 +1363,20 @@ Route::post('/notifikasi/read-all', function () {
             $isDraft     = $request->input('action') === 'draft' || $request->has('simpan_draf');
             $user        = Auth::user();
 
+            $personelRows = null;
             if (! $isDraft) {
                 $rules = [];
                 foreach ($jenisSurat->fields as $field) {
+                    if ($field === 'personel') {
+                        continue;
+                    }
                     $rules[$field] = 'required';
                 }
                 $request->validate($rules);
+
+                if (SuratPersonelSync::shouldValidate($request, (array) ($jenisSurat->fields ?? []))) {
+                    $personelRows = SuratPersonelSync::validateRows($request, true);
+                }
             }
 
             $fieldDiizinkan = array_values(array_unique(array_merge(
@@ -1238,6 +1431,12 @@ Route::post('/notifikasi/read-all', function () {
                 'data'   => $dataBaru,
                 'status' => $statusBaru,
             ]);
+
+            if ($personelRows !== null) {
+                SuratPersonelSync::syncToSurat($draf, $personelRows);
+            } elseif ($isDraft && $request->has('personel') && is_array($request->input('personel'))) {
+                SuratPersonelSync::syncToSurat($draf, $request->input('personel'));
+            }
 
             if ($statusBaru === 'menunggu') {
                 foreach (\App\Models\User::where('role', 'admin')->get() as $admin) {
@@ -1313,10 +1512,14 @@ Route::post('/notifikasi/read-all', function () {
 
         /*
         |----------------------------------------------------------------------
-        | LOG SURAT MAHASISWA
+        | LOG SURAT MAHASISWA (B-27) & HAPUS DRAF MAHASISWA (B-14)
         |----------------------------------------------------------------------
         */
+        Route::delete('/mahasiswa/surat/{id}/draf', $hapusDrafHandler)->name('mahasiswa.surat.draf.destroy');
+
         Route::get('/mahasiswa/surat', function (Request $request) {
+
+            $totalSemuaSurat = SuratPengajuan::where('user_id', Auth::id())->count();
 
             $query = SuratPengajuan::with('jenisSurat')
                 ->where('user_id', Auth::id());
@@ -1329,7 +1532,7 @@ Route::post('/notifikasi/read-all', function () {
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            return view('mahasiswa.surat.log', compact('suratList'));
+            return view('mahasiswa.surat.log', compact('suratList', 'totalSemuaSurat'));
         });
 
     });
@@ -1341,12 +1544,13 @@ Route::post('/notifikasi/read-all', function () {
     */
     Route::middleware('role:admin')->group(function () {
 
-        // ================= DASHBOARD ADMIN - MAHASISWA =================
+        // ================= DASHBOARD ADMIN - MAHASISWA (B-19 FIFO) =================
         Route::get('/admin/dashboard', function (Request $request) {
 
             $roleTarget = 'mahasiswa';
             $query = SuratPengajuan::with(['user','jenisSurat'])
-                ->whereIn('status', ['menunggu', 'menunggu_admin_final'])
+                ->bukanDraf()
+                ->antreanTuAktif()
                 ->whereHas('user', fn ($query) => $query->where('role', $roleTarget));
 
             // SEARCH
@@ -1374,9 +1578,9 @@ Route::post('/notifikasi/read-all', function () {
                 $query->where('jenis_surat_id', $request->jenis);
             }
 
-            // SORT wAKTU
-            $sort = $request->sort === 'asc' ? 'asc' : 'desc';
-            $query->orderBy('created_at', $sort);
+            // SORT WAKTU: Default FIFO (terlama masuk -> terbaru)
+            $sort = $request->sort === 'desc' ? 'desc' : 'asc';
+            $query->urutFifo($sort);
 
             $suratPengajuan = $query->get();
 
@@ -1384,19 +1588,21 @@ Route::post('/notifikasi/read-all', function () {
             $jenisSurat = JenisSurat::where('target_user', $roleTarget)->orderBy('nama')->get();
             return view('admin.dashboard', compact(
                 'suratPengajuan',
-                'jenisSurat'
+                'jenisSurat',
+                'sort'
             ));
 
         })->middleware(['auth','role:admin']);
 
-        // ================= DASHBOARD ADMIN - DOSEN =================
+        // ================= DASHBOARD ADMIN - DOSEN (B-19 FIFO) =================
         Route::get('/admin/dashboard-dosen', function (Request $request) {
 
             $roleTarget = 'dosen';
 
             $query = SuratPengajuan::with(['user','jenisSurat'])
-                ->whereHas('user', fn ($q) => $q->where('role', $roleTarget))
-                ->whereIn('status', ['menunggu', 'menunggu_admin_final']);
+                ->bukanDraf()
+                ->antreanTuAktif()
+                ->whereHas('user', fn ($q) => $q->where('role', $roleTarget));
 
             // SEARCH
             if ($request->q) {
@@ -1416,21 +1622,19 @@ Route::post('/notifikasi/read-all', function () {
                 $query->where('jenis_surat_id', $request->jenis);
             }
 
-            // SORT wAKTU
-            $sort = $request->sort === 'asc' ? 'asc' : 'desc';
-            $query->orderBy('created_at', $sort);
+            // SORT WAKTU: Default FIFO (terlama masuk -> terbaru)
+            $sort = $request->sort === 'desc' ? 'desc' : 'asc';
+            $query->urutFifo($sort);
 
             $suratPengajuan = $query->get();
 
-            // dropdown
-            $jenisSurat = JenisSurat::all();
-
             // JENIS SURAT KHUSUS DOSEN
-            $jenisSurat = JenisSurat::where('target_user', $roleTarget)->get();
+            $jenisSurat = JenisSurat::where('target_user', $roleTarget)->orderBy('nama')->get();
 
             return view('admin.dashboard-dosen', compact(
                 'suratPengajuan',
-                'jenisSurat'
+                'jenisSurat',
+                'sort'
             ));
 
         })->middleware(['auth','role:admin']);
@@ -1610,11 +1814,124 @@ Route::post('/notifikasi/read-all', function () {
             return view('surat.detail', compact('surat'));
         });
 
+        /*
+        |----------------------------------------------------------------------
+        | B-20: VERIFIKASI SURAT OLEH ADMIN TU & PENGEMBALIAN REVISI
+        |----------------------------------------------------------------------
+        */
+        Route::post('/admin/surat/{id}/verifikasi', function (Request $request, $id) {
+            $surat = SuratPengajuan::with(['user', 'jenisSurat'])->findOrFail($id);
+
+            if ($surat->status === 'draf') {
+                abort(404, 'Surat masih berstatus draf oleh pengusul.');
+            }
+
+            if ($surat->status !== 'menunggu') {
+                $pesan = 'Hanya surat berstatus menunggu verifikasi TU yang dapat diverifikasi.';
+                if ($request->expectsJson()) {
+                    return response()->json(['status' => 'error', 'message' => $pesan], 422);
+                }
+
+                return back()->with('error', $pesan);
+            }
+
+            $surat->update([
+                'status' => 'diverifikasi_tu',
+                'diverifikasi_tu_at' => now(),
+                'catatan_revisi' => null,
+            ]);
+
+            $route = $surat->user->role === 'dosen'
+                ? '/dosen/surat/' . $surat->id
+                : '/mahasiswa/surat/' . $surat->id;
+
+            pushNotif(
+                $surat->user_id,
+                'Surat Diverifikasi TU',
+                'Pengajuan "' . $surat->jenisSurat->nama . '" telah lolos verifikasi Admin TU.',
+                $route
+            );
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Surat berhasil diverifikasi TU.',
+                    'data' => ['id' => $surat->id, 'status' => $surat->status],
+                ]);
+            }
+
+            $dashboardRedirect = $surat->user->role === 'dosen' ? '/admin/dashboard-dosen' : '/admin/dashboard';
+
+            return redirect($dashboardRedirect)
+                ->with('success', 'Surat berhasil diverifikasi (Diverifikasi TU).');
+        })->name('admin.surat.verifikasi');
+
+        Route::post('/admin/surat/{id}/revisi', function (Request $request, $id) {
+            $surat = SuratPengajuan::with(['user', 'jenisSurat'])->findOrFail($id);
+
+            if ($surat->status === 'draf') {
+                abort(404, 'Surat masih berstatus draf oleh pengusul.');
+            }
+
+            if (! in_array($surat->status, ['menunggu', 'diverifikasi_tu'], true)) {
+                $pesan = 'Hanya surat dalam tahap verifikasi TU yang dapat dikembalikan untuk revisi.';
+                if ($request->expectsJson()) {
+                    return response()->json(['status' => 'error', 'message' => $pesan], 422);
+                }
+
+                return back()->with('error', $pesan);
+            }
+
+            $validated = $request->validate([
+                'catatan_revisi' => ['required', 'string', 'min:3', 'max:1000', 'regex:/^[^<>]*$/'],
+            ], [
+                'catatan_revisi.required' => 'Catatan revisi wajib diisi sebelum mengembalikan surat.',
+                'catatan_revisi.min' => 'Catatan revisi minimal 3 karakter.',
+                'catatan_revisi.max' => 'Catatan revisi maksimal 1000 karakter.',
+                'catatan_revisi.regex' => 'Catatan revisi tidak boleh mengandung tag HTML (< atau >).',
+            ]);
+
+            $catatan = trim($validated['catatan_revisi']);
+
+            $surat->update([
+                'status' => 'perlu_revisi',
+                'catatan_revisi' => $catatan,
+            ]);
+
+            $route = $surat->user->role === 'dosen'
+                ? '/dosen/surat/' . $surat->id
+                : '/mahasiswa/surat/' . $surat->id;
+
+            pushNotif(
+                $surat->user_id,
+                'Surat Perlu Revisi',
+                'Pengajuan "' . $surat->jenisSurat->nama . '" dikembalikan Admin TU: ' . $catatan,
+                $route
+            );
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Surat dikembalikan kepada pengusul dengan status Perlu Revisi.',
+                    'data' => [
+                        'id' => $surat->id,
+                        'status' => $surat->status,
+                        'catatan_revisi' => $surat->catatan_revisi,
+                    ],
+                ]);
+            }
+
+            $dashboardRedirect = $surat->user->role === 'dosen' ? '/admin/dashboard-dosen' : '/admin/dashboard';
+
+            return redirect($dashboardRedirect)
+                ->with('success', 'Surat dikembalikan dengan status Perlu Revisi.');
+        })->name('admin.surat.revisi');
+
         Route::post('/admin/surat/{id}/setujui', function ($id) {
 
             $surat = SuratPengajuan::with('jenisSurat')->findOrFail($id);
 
-            if ($surat->status !== 'menunggu') {
+            if (! in_array($surat->status, ['menunggu', 'diverifikasi_tu'], true)) {
                 return redirect('/admin/dashboard');
             }
 
@@ -1829,7 +2146,7 @@ Route::post('/notifikasi/read-all', function () {
 
             $surat = SuratPengajuan::findOrFail($id);
 
-            if ($surat->status !== 'menunggu') {
+            if (! in_array($surat->status, ['menunggu', 'diverifikasi_tu'], true)) {
                 return redirect('/admin/dashboard');
             }
 

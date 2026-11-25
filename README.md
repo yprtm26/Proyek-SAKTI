@@ -19,6 +19,19 @@ melalui alur Admin TU, Kaprodi, dan/atau Dekan.
   - Endpoint daftar template aktif khusus pengusul: `GET /api/template-surat`
     (mahasiswa/dosen; hanya template aktif sesuai role).
 
+## Fitur Sprint 2
+
+- Penguncian sementara akun setelah gagal login berulang (B-01 B) dengan countdown timer aksesibel.
+- Penyaringan formulir surat tugas dosen berdasarkan indeks kegiatan (B-07).
+- Dropdown searchable teraksesibel untuk data master prodi, semester, dan dosen (B-08).
+- Date picker (`YYYY-MM-DD`) dan time picker 24 jam (`HH:mm`) dengan validasi rentang di server (B-09, B-10 A).
+- Pengisian dinamis daftar anggota dan peran dalam kegiatan (B-10 B).
+- Manajemen draf pengajuan surat: simpan parsial (`POST /surat/draf`, B-13 A), buka & ubah draf (`GET/POST /{role}/surat/{id}/edit-draf`, B-13 B), serta hapus permanen draf (`DELETE /surat/{id}/draf`, B-14) dengan modal konfirmasi focus trap dan proteksi status.
+- Pengurutan antrean surat secara FIFO di dasbor Admin TU (B-19) dengan kolom `Waktu Masuk` (`DD/MM/YYYY HH:mm`) dan indikator prioritas FIFO.
+- Verifikasi surat oleh Admin TU (`POST /admin/surat/{id}/verifikasi` menjadi `Diverifikasi TU`) dan pengembalian revisi (`POST /admin/surat/{id}/revisi` menjadi `Perlu Revisi`) dengan modal catatan revisi wajib isi (B-20).
+- Daftar riwayat seluruh pengajuan surat pengusul (`GET /riwayat-surat`, `GET /api/riwayat-surat`, `/mahasiswa/surat`, `/dosen/surat`, B-27) dengan nomor, tanggal, badge status kontras >= 4.5:1, dan empty state.
+- Pratinjau dokumen surat terformat (`GET /surat/{id}/pratinjau`, B-28) melalui modal Escape-closable (tipografi >= 14px, kontras 21:1) serta halaman 404 yang aman.
+
 ## Kebutuhan
 
 - PHP 8.2+ (diuji pada PHP 8.4)
@@ -40,16 +53,22 @@ php artisan serve
 
 ## Pengujian
 
-Seluruh test:
+Seluruh test PHPUnit:
 
 ```bash
-php vendor/bin/phpunit --testdox
+php artisan test
 ```
 
-Test khusus B-06:
+Test unit JavaScript (aksesibilitas komponen & modal):
 
 ```bash
-php vendor/bin/phpunit tests/Feature/PemilihanTemplateAktifTest.php --testdox
+node --test tests/js/*.test.mjs
+```
+
+Test fitur Sprint 2 (B-14 hingga B-28):
+
+```bash
+php artisan test --filter="HapusDrafB14Test|AntreanFifoTuB19Test|VerifikasiRevisiTuB20Test|RiwayatPengusulB27Test|PratinjauSuratB28Test"
 ```
 
 ## Dokumentasi

@@ -2,125 +2,53 @@
 
 @section('content')
 
-<div class="flex justify-between items-center mb-6">
-    <h2 class="text-xl font-semibold text-gray-700">
-        Antrean Pengajuan Surat — Mahasiswa
+<div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
+    <h2 class="text-xl font-bold text-gray-900">
+        Antrean Pengajuan Surat - Mahasiswa
     </h2>
 
-    <div class="flex gap-3">
+    <div class="flex flex-wrap gap-2">
+        <a href="{{ auth()->user()->role === 'admin' ? url('/admin/disposisi') : url('/disposisi') }}"
+           class="sakti-touch-target inline-flex items-center gap-2 px-4 py-2 bg-green-700 text-white text-sm font-semibold rounded-lg hover:bg-green-800 transition">
+            Dashboard Disposisi
+        </a>
 
-        {{-- TOMBOL KE DASHBOARD DISPOSISI --}}
-        <div class="flex gap-3">
-            <a href="{{ auth()->user()->role === 'admin' ? url('/admin/disposisi') : url('/disposisi') }}"
-            class="inline-flex items-center gap-2
-                    px-4 py-2
-                    bg-green-500 text-white text-sm font-medium
-                    rounded-full
-                    hover:bg-green-600 transition">
-                <svg xmlns="http://www.w3.org/2000/svg"
-                    class="w-4 h-4 text-white"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m0 0v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8m18 0L12 13 3 8"/>
-                </svg>
-                Dashboard Disposisi
-            </a>
-        </div>
+        <a href="{{ url('/admin/surat') }}"
+           class="sakti-touch-target inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-400 text-gray-900 text-sm font-semibold rounded-lg hover:bg-gray-100 transition">
+            Log Surat
+        </a>
 
-            <a href="{{ url('/admin/surat') }}"
-            class="inline-flex items-center gap-2
-                    px-4 py-2
-                    bg-white border border-gray-300
-                    text-gray-700 text-sm font-medium
-                    rounded-full
-                    hover:bg-gray-100 transition">
-
-                <svg xmlns="http://www.w3.org/2000/svg"
-                    class="w-4 h-4 text-gray-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M2.25 12.75V6.75a3 3 0 013-3h4.28
-                        a1.5 1.5 0 011.06.44l1.72 1.72
-                        a1.5 1.5 0 001.06.44H18.75
-                        a3 3 0 013 3v3.75" />
-                <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M2.25 12.75A3.75 3.75 0 016 9h15.75
-                        a3.75 3.75 0 013.75 3.75v4.5
-                        A3.75 3.75 0 0118.75 21H6
-                        a3.75 3.75 0 01-3.75-3.75v-4.5z" />
-                </svg>
-
-                Log Surat
-            </a>
-
-            <a href="{{ url('/admin/template-surat') }}"
-            class="inline-flex items-center gap-2
-                    px-4 py-2
-                    bg-white border border-gray-300
-                    text-gray-700 text-sm font-medium
-                    rounded-full
-                    hover:bg-gray-100 transition">
-
-                <svg xmlns="http://www.w3.org/2000/svg"
-                    class="w-4 h-4 text-gray-500"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5A3.375 3.375 0 0010.125 2.25H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M12 9v6m3-3H9" />
-                </svg>
-
-                Kelola Template
-            </a>
+        <a href="{{ url('/admin/template-surat') }}"
+           class="sakti-touch-target inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-400 text-gray-900 text-sm font-semibold rounded-lg hover:bg-gray-100 transition">
+            Kelola Template
+        </a>
     </div>
-
 </div>
 
 {{-- ================= FILTER & SEARCH ================= --}}
-{{-- ================= FILTER (1 BARIS) ================= --}}
 <form method="GET"
-      class="bg-gray-50 border rounded-lg p-3 mb-6">
+      action="/admin/dashboard"
+      class="bg-white border border-gray-300 rounded-xl p-4 mb-6">
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
 
         {{-- SEARCH --}}
         <div class="lg:col-span-3">
-            <div class="relative">
-                <span class="absolute inset-y-0 left-3 flex items-center text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg"
-                         class="w-4 h-4"
-                         fill="none" viewBox="0 0 24 24"
-                         stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                              d="M21 21l-4.35-4.35m1.85-5.65a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                </span>
-
-                <input type="text"
-                       name="q"
-                       value="{{ request('q') }}"
-                       placeholder="Cari nama / NPM / jenis surat"
-                       class="w-full pl-10 pr-3 py-2
-                              border rounded-lg
-                              focus:ring-2 focus:ring-blue-500
-                              focus:outline-none">
-            </div>
+            <label for="adminSearchQ" class="block text-xs font-semibold text-gray-800 mb-1">Pencarian</label>
+            <input type="text"
+                   id="adminSearchQ"
+                   name="q"
+                   value="{{ request('q') }}"
+                   placeholder="Cari nama / NPM / jenis surat"
+                   class="w-full min-h-[44px] px-3 py-2 border border-gray-400 rounded-lg text-sm text-gray-900 bg-white">
         </div>
 
         {{-- PRODI --}}
-        <div class="lg:col-span-1">
-            <select name="prodi"
-                    class="w-full border rounded-lg px-3 py-2">
-                <option value="">Prodi</option>
+        <div class="lg:col-span-2">
+            <label for="adminFilterProdi" class="block text-xs font-semibold text-gray-800 mb-1">Prodi</label>
+            <select id="adminFilterProdi" name="prodi"
+                    class="w-full min-h-[44px] border border-gray-400 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white">
+                <option value="">Semua Prodi</option>
                 <option value="PdSI" {{ request('prodi')=='PdSI'?'selected':'' }}>PdSI</option>
                 <option value="TI" {{ request('prodi')=='TI'?'selected':'' }}>TI</option>
             </select>
@@ -128,9 +56,10 @@
 
         {{-- JENIS --}}
         <div class="lg:col-span-2">
-            <select name="jenis"
-                    class="w-full border rounded-lg px-3 py-2">
-                <option value="">Jenis Surat</option>
+            <label for="adminFilterJenis" class="block text-xs font-semibold text-gray-800 mb-1">Jenis Surat</label>
+            <select id="adminFilterJenis" name="jenis"
+                    class="w-full min-h-[44px] border border-gray-400 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white">
+                <option value="">Semua Jenis</option>
                 @foreach($jenisSurat as $j)
                     <option value="{{ $j->id }}"
                         {{ request('jenis')==$j->id?'selected':'' }}>
@@ -140,66 +69,40 @@
             </select>
         </div>
 
-        {{-- SORT --}}
+        {{-- SORT (Default FIFO: asc) --}}
         <div class="lg:col-span-2">
-            <select name="sort"
-                    class="w-full border rounded-lg px-3 py-2">
-                <option value="desc" {{ request('sort')=='desc'?'selected':'' }}>
-                    Terbaru
-                </option>
-                <option value="asc" {{ request('sort')=='asc'?'selected':'' }}>
+            <label for="adminFilterSort" class="block text-xs font-semibold text-gray-800 mb-1">Urutan Antrean</label>
+            <select id="adminFilterSort" name="sort"
+                    onchange="this.form.submit()"
+                    class="w-full min-h-[44px] border border-gray-400 rounded-lg px-3 py-2 text-sm text-gray-900 bg-white">
+                <option value="asc" {{ ($sort ?? request('sort', 'asc')) === 'asc' ? 'selected' : '' }}>
                     Terlama
+                </option>
+                <option value="desc" {{ ($sort ?? request('sort')) === 'desc' ? 'selected' : '' }}>
+                    Terbaru
                 </option>
             </select>
         </div>
 
-        {{-- RESET --}}
+        {{-- RESET & APPLY --}}
         <div class="lg:col-span-1">
             <a href="/admin/dashboard"
-               class="inline-flex justify-center w-full
-                      px-4 py-2
-                      border border-gray-300
-                      text-gray-700 text-sm font-medium
-                      rounded-lg
-                      hover:bg-gray-100">
+               class="sakti-touch-target w-full px-3 py-2 border border-gray-400 text-gray-900 text-sm font-semibold rounded-lg hover:bg-gray-100">
                 Reset
             </a>
         </div>
 
-        {{-- APPLY --}}
         <div class="lg:col-span-1">
             <button type="submit"
-                    class="inline-flex justify-center w-full
-                           px-4 py-2
-                           bg-blue-600 hover:bg-blue-700
-                           text-white text-sm font-medium
-                           rounded-lg">
+                    class="sakti-touch-target w-full px-3 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-lg">
                 Terapkan
             </button>
         </div>
 
         {{-- SWITCH --}}
-        <div class="lg:col-span-2">
-            <a href="{{ '/admin/dashboard-dosen' }}"
-               class="ml-auto pl-4 border-l
-                      inline-flex justify-center w-full items-center gap-2
-                      px-4 py-2
-                      bg-blue-50
-                      border-blue-300
-                      text-blue-700 text-sm font-medium
-                      rounded-full
-                      hover:bg-blue-100 transition">
-
-                <svg xmlns="http://www.w3.org/2000/svg"
-                     class="w-4 h-4 text-blue-600"
-                     fill="none" viewBox="0 0 24 24"
-                     stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                          d="M3 9.75L12 3l9 6.75V21
-                             a.75.75 0 01-.75.75H3.75
-                             A.75.75 0 013 21V9.75z" />
-                </svg>
-
+        <div class="lg:col-span-1">
+            <a href="/admin/dashboard-dosen"
+               class="sakti-touch-target w-full px-3 py-2 bg-orange-50 border border-orange-400 text-orange-900 text-xs font-bold rounded-lg hover:bg-orange-100 text-center">
                 Surat Dosen
             </a>
         </div>
@@ -207,57 +110,12 @@
     </div>
 </form>
 
-
-{{-- ================= TABLE ================= --}}
-<div class="bg-white rounded shadow overflow-x-auto">
-    <table class="w-full border border-gray-300 rounded-lg overflow-hidden">
-        <thead class="bg-gray-200">
-            <tr>
-                <th class="px-4 py-3">No</th>
-                <th class="px-4 py-3">Nama</th>
-                <th class="px-4 py-3">NPM / NIDN / NIP</th>
-                <th class="px-4 py-3">Jenis Surat</th>
-                <th class="px-4 py-3">Tanggal</th>
-                <th class="px-4 py-3">Status</th>
-                <th class="px-4 py-3">Aksi</th>
-            </tr>
-        </thead>
-
-        <tbody class="divide-y">
-        @forelse($suratPengajuan as $i => $surat)
-            <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3">{{ $i + 1 }}</td>
-                <td class="px-4 py-3">{{ $surat->user->name }}</td>
-                <td class="px-4 py-3">
-                    {{ $surat->user->npm ?? $surat->user->nidn ?? $surat->user->serial_number ?? '—' }}
-                    <span class="block text-xs text-gray-500">{{ ucfirst($surat->user->role) }}</span>
-                </td>
-                <td class="px-4 py-3">{{ $surat->jenisSurat->nama }}</td>
-                <td class="px-4 py-3">
-                    {{ $surat->created_at->format('d-m-Y H:i') }}
-                </td>
-                <td class="px-4 py-3">
-                    <span class="px-2 py-1 rounded text-xs text-white bg-orange-500">
-                        {{ $surat->status }}
-                    </span>
-                </td>
-                <td class="px-4 py-3">
-                    <a href="/admin/surat/{{ $surat->id }}"
-                       class="inline-block bg-blue-100 text-blue-700 hover:bg-blue-200 
-                            px-3 py-1 rounded text-xs font-semibold">
-                        Detail
-                    </a>
-                </td>
-            </tr>
-        @empty
-            <tr>
-                <td colspan="7" class="px-4 py-6 text-center text-gray-500">
-                    Belum ada pengajuan surat dari mahasiswa.
-                </td>
-            </tr>
-        @endforelse
-        </tbody>
-    </table>
-</div>
+@include('admin.partials.antrean-fifo-table', [
+    'suratPengajuan' => $suratPengajuan,
+    'roleTarget' => 'mahasiswa',
+    'identityLabel' => 'NPM / NIDN / NIP',
+    'emptyMessage' => 'Belum ada pengajuan surat aktif dari mahasiswa.',
+    'sort' => $sort ?? 'asc',
+])
 
 @endsection

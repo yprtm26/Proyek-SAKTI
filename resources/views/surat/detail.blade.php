@@ -33,12 +33,16 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
 
         <div>
-            <p class="text-gray-500">Status</p>
-            <span class="inline-block mt-1 px-3 py-1 text-xs rounded
-                {{ $surat->status === 'disetujui_final' ? 'bg-green-100 text-green-700' :
-                   ($surat->status === 'ditolak' ? 'bg-red-100 text-red-700' :
-                    'bg-orange-100 text-orange-700') }}">
-                {{ statusMahasiswa($surat->status) }}
+            <p class="text-gray-600">Status</p>
+            @php
+                $badge = statusBadgeMeta((string) $surat->status);
+                $statusLabel = $surat->user->role === 'dosen'
+                    ? statusDosen($surat->status)
+                    : statusMahasiswa($surat->status);
+            @endphp
+            <span class="inline-block mt-1 {{ $badge['class'] }}"
+                  style="background-color: {{ $badge['bg'] }}; color: {{ $badge['fg'] }};">
+                {{ $statusLabel }}
             </span>
         </div>
 
@@ -69,9 +73,19 @@
         {{-- hanya muncul jika DITOLAK --}}
         @if($surat->status === 'ditolak' && $surat->alasan_tolak)
         <div class="md:col-span-2">
-            <p class="text-gray-500">Alasan Penolakan</p>
-            <p class="text-red-600 font-medium">
+            <p class="text-gray-600">Alasan Penolakan</p>
+            <p class="text-red-700 font-medium">
                 {{ $surat->alasan_tolak }}
+            </p>
+        </div>
+        @endif
+
+        {{-- B-20: Catatan Revisi Admin TU --}}
+        @if($surat->catatan_revisi)
+        <div class="md:col-span-2">
+            <p class="text-gray-600">Catatan Revisi TU</p>
+            <p class="text-amber-900 bg-amber-50 border border-amber-300 rounded px-3 py-2 font-medium mt-1">
+                {{ $surat->catatan_revisi }}
             </p>
         </div>
         @endif
@@ -134,6 +148,9 @@
 </div>
 @endif
 
+{{-- ================= DAFTAR ANGGOTA KEGIATAN ================= --}}
+@include('surat.partials.detail-personel', ['surat' => $surat])
+
 {{-- ================= PREVIEW ================= --}}
 <div class="-mx-6 bg-gray-100 py-10">
     <h3 class="font-semibold text-gray-700 mb-4 px-6">
@@ -166,22 +183,44 @@
 </div>
 
 {{-- ================= AKSI ================= --}}
+@if($errors->has('catatan_revisi'))
+    <div role="alert" class="mb-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-900">
+        {{ $errors->first('catatan_revisi') }}
+    </div>
+@endif
+
 {{-- PENTING: hanya role + status yang VALID --}}
 @if(
-    ($user->role === 'admin'   && $surat->status === 'menunggu') ||
+    ($user->role === 'admin'   && in_array($surat->status, ['menunggu', 'diverifikasi_tu'], true)) ||
     ($user->role === 'kaprodi' && $surat->status === 'menunggu_kaprodi') ||
     ($user->role === 'dekan'   && $surat->status === 'menunggu_dekan')
 )
-<div class="flex justify-end gap-3">
+<div class="flex flex-wrap justify-end gap-3">
+    @if($user->role === 'admin' && $surat->status === 'menunggu')
+        <form method="POST" action="/admin/surat/{{ $surat->id }}/verifikasi" class="inline">
+            @csrf
+            <button type="submit"
+                    class="sakti-touch-target bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                Setujui Verifikasi
+            </button>
+        </form>
+        <button type="button"
+                data-revisi-trigger
+                data-revisi-url="/admin/surat/{{ $surat->id }}/revisi"
+                data-surat-name="{{ $surat->jenisSurat->nama }} - {{ $surat->user->name }}"
+                class="sakti-touch-target bg-amber-700 hover:bg-amber-800 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+            Kembalikan Revisi
+        </button>
+    @endif
 
-    <button onclick="openRejectModal()"
-        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+    <button type="button" onclick="openRejectModal()"
+        class="sakti-touch-target bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg text-sm font-semibold">
         Tolak
     </button>
 
-    <button onclick="openApproveModal()"
-        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-        Setujui
+    <button type="button" onclick="openApproveModal()"
+        class="sakti-touch-target bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+        Setujui & Teruskan
     </button>
 </div>
 @endif
@@ -392,5 +431,7 @@
         document.getElementById('finalisasiModal').classList.add('hidden');
     }
 </script>
+
+<x-modal-revisi-tu />
 
 @endsection

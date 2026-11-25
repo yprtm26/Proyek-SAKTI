@@ -101,6 +101,7 @@ if (!function_exists('labelFieldSurat')) {
             'keterangan' => 'Keterangan',
             'anggota' => 'Anggota',
             'anggota_tim' => 'Anggota Tim',
+            'personel' => 'Daftar Anggota & Peran Kegiatan',
             'mahasiswa' => 'Mahasiswa',
             'pengalaman' => 'Pengalaman',
             'project' => 'Proyek',

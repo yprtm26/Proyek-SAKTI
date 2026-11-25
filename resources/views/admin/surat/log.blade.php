@@ -8,8 +8,8 @@
         <div class="mb-6 flex justify-between items-start">
             
             <div>
-                <h2 class="text-2xl font-semibold text-gray-700">
-                    Log — Surat
+                <h2 class="text-2xl font-semibold text-gray-900">
+                    Log Surat
                 </h2>
             </div>
 
@@ -59,6 +59,8 @@
             <select name="status" class="w-full border rounded-lg px-3 py-2">
                 <option value="">Semua</option>
                 <option value="menunggu" {{ request('status')=='menunggu'?'selected':'' }}>Menunggu</option>
+                <option value="diverifikasi_tu" {{ request('status')=='diverifikasi_tu'?'selected':'' }}>Diverifikasi TU</option>
+                <option value="perlu_revisi" {{ request('status')=='perlu_revisi'?'selected':'' }}>Perlu Revisi</option>
                 <option value="disetujui_final" {{ request('status')=='disetujui_final'?'selected':'' }}>Disetujui</option>
                 <option value="ditolak" {{ request('status')=='ditolak'?'selected':'' }}>Ditolak</option>
             </select>
@@ -186,15 +188,12 @@
                     <td class="border-t px-3 py-2 min-w-[160px]">{{ $surat->jenisSurat->nama }}</td>
                     <td class="border-t px-3 py-2 min-w-[180px]">
                         @php
-                            $status = $surat->status;
-                            $color = match($status) {
-                                'ditolak' => 'bg-red-600',
-                                'disetujui_final' => 'bg-green-600',
-                                default => 'bg-orange-500'
-                            };
+                            $status = (string) $surat->status;
+                            $badge = statusBadgeMeta($status);
                         @endphp
-                        <span class="border-t px-3 py-1 rounded {{ $color }} text-white text-xs font-semibold">
-                            {{ 
+                        <span class="{{ $badge['class'] }}"
+                              style="background-color: {{ $badge['bg'] }}; color: {{ $badge['fg'] }};">
+                            {{
                                 $surat->user->role === 'dosen'
                                     ? statusDosen($status)
                                     : statusMahasiswa($status)
@@ -217,11 +216,19 @@
                     </td>
 
                     <td class="border-t px-3 py-2 text-center">
-                        <a href="/admin/surat/{{ $surat->id }}"
-                           class="inline-block bg-blue-100 text-blue-700 hover:bg-blue-200 
-                                px-3 py-1 rounded text-xs font-semibold">
-                        Detail
-                    </a>
+                        <div class="flex items-center justify-center gap-2">
+                            <button type="button"
+                                    data-preview-trigger
+                                    data-preview-url="/surat/{{ $surat->id }}/pratinjau"
+                                    data-surat-name="{{ $surat->jenisSurat->nama }}"
+                                    class="sakti-touch-target border border-gray-400 bg-white text-gray-900 hover:bg-gray-100 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                                Pratinjau
+                            </button>
+                            <a href="/admin/surat/{{ $surat->id }}"
+                               class="sakti-touch-target bg-blue-700 text-white hover:bg-blue-800 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                                Detail
+                            </a>
+                        </div>
                     </td>
                 </tr>
             @empty
@@ -236,5 +243,7 @@
     </div>
 
 </div>
+
+<x-modal-pratinjau-surat />
 
 @endsection

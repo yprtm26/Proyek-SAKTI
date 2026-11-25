@@ -13,6 +13,12 @@
 
     {{-- B-10 A: time picker aksesibel 24 jam --}}
     <link rel="stylesheet" href="{{ asset('css/timepicker.css') }}">
+
+    {{-- B-10 B: daftar anggota kegiatan dinamis --}}
+    <link rel="stylesheet" href="{{ asset('css/personel-list.css') }}">
+
+    {{-- B-14, B-19, B-20, B-27, B-28: aksesibilitas, badge kontras tinggi, dan modal --}}
+    <link rel="stylesheet" href="{{ asset('css/sakti-ui.css') }}">
 </head>
 
 <body class="bg-gray-100 min-h-screen flex flex-col">
@@ -22,18 +28,13 @@
 
     $user = auth()->user();
 
-    $roleTitle = match($user->role) {
-        'admin'         => 'Admin TU',
-        'administrator' => 'Administrator',
-        'kaprodi'       => 'Kepala Prodi',
-        'dekan'         => 'Dekan',
-        'dosen'         => 'Dosen',
-        default         => 'Mahasiswa',
-    };
-
-    $subTitle = match($user->role) {
-        'kaprodi', 'mahasiswa' => namaProdi($user->prodi),
-        default                => 'Fakultas Teknologi Informasi',
+    [$roleTitle, $subTitle] = match($user->role) {
+            'admin' => ['Admin TU', 'Fakultas Teknologi Informasi'],
+            'administrator' => ['Administrator', 'Fakultas Teknologi Informasi'],
+            'kaprodi' => ['Kepala Prodi', namaProdi($user->prodi)],
+            'dekan' => ['Dekan', 'Fakultas Teknologi Informasi'],
+            'dosen' => ['Dosen', 'Fakultas Teknologi Informasi'],
+            default => ['Mahasiswa', namaProdi($user->prodi)],
     };
 @endphp
 
@@ -48,7 +49,10 @@
                 class="flex items-center gap-4 hover:opacity-90 transition">
             @endauth
                 <img src="{{ asset('img/logo.jpeg') }}"
-                    class="h-12 bg-white rounded p-1">
+                    alt="Logo Universitas YARSI"
+                    width="48"
+                    height="48"
+                    class="h-12 w-auto bg-white rounded p-1">
 
                 <h1 class="text-lg font-semibold leading-tight">
                     {{ $roleTitle }}<br>
@@ -64,8 +68,10 @@
             <div class="relative group">
 
                 {{-- ICON --}}
-                <button onclick="toggleNotif()"
-                        class="relative flex items-center justify-center w-8 h-8">
+                <button type="button"
+                        onclick="toggleNotif()"
+                        aria-label="Buka notifikasi"
+                        class="relative flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg">
 
                     <svg xmlns="http://www.w3.org/2000/svg"
                          class="h-6 w-6 text-white"
@@ -300,5 +306,11 @@
 
 {{-- B-10 A: time picker aksesibel (waktu format 24 jam) --}}
 <script type="module" src="{{ asset('js/timepicker.js') }}"></script>
+
+{{-- B-10 B: daftar anggota kegiatan dinamis --}}
+<script type="module" src="{{ asset('js/personel-list.js') }}"></script>
+
+{{-- B-14, B-20, B-28: modal konfirmasi, revisi TU, dan pratinjau surat --}}
+<script type="module" src="{{ asset('js/sakti-modal.js') }}"></script>
 </body>
 </html>

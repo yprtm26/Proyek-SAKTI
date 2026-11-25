@@ -244,12 +244,13 @@
             </section>
 
             {{-- ================= ACTION ================= --}}
-            <div class="flex justify-end gap-3">
+            <div class="flex flex-wrap justify-end gap-3">
                 <a href="/mahasiswa/dashboard"
-                   class="px-4 py-2 bg-gray-200 rounded">
+                   class="sakti-touch-target px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-lg font-medium">
                     Batal
                 </a>
-                <button class="px-6 py-2 bg-green-600 text-white rounded">
+                <x-tombol-simpan-draf :jenis-surat="$jenisSurat" />
+                <button type="submit" class="sakti-touch-target px-6 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg font-semibold">
                     Ajukan Surat
                 </button>
             </div>

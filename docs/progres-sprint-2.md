@@ -14,14 +14,14 @@
 | **B-08** | Input prodi, semester, dan dosen melalui dropdown | **Selesai** | Dropdown searchable teraksesibel (Tab/Enter/Esc), master prodi/semester/dosen, dan validasi `exists` + 422. Test lolos. |
 | **B-09** | Pemilihan tanggal awal dan akhir kegiatan (date picker) | **Selesai** | Date picker aksesibel (keyboard + focus ring), format `YYYY-MM-DD`, validasi server tanggal selesai $\ge$ tanggal mulai, dan pesan error terverifikasi. Test lolos. |
 | **B-10 A** | Pemilihan waktu mulai dan selesai kegiatan (time picker) | **Selesai** | Mask format 24 jam (`HH:mm`), popover visual aksesibel (WCAG AA), normalisasi pemisah titik, dan validasi jam selesai $>$ mulai pada hari yang sama. Test lolos (6 tests, 26 assertions & 11 JS unit tests). |
-| **B-10 B** | Pengisian daftar anggota dan peran dalam kegiatan | **Belum dikerjakan** | Dynamic input row anggota, target klik $\ge 44 \times 44\text{px}$, validasi baris kosong. |
+| **B-10 B** | Pengisian daftar anggota dan peran dalam kegiatan | **Selesai** | Tabel relasi `surat_personel`, endpoint bulk `/surat/{id}/personel`, komponen `<x-personel-list>` responsif (target >= 44x44px, focus ring >= 3:1), validasi baris kosong. Test lolos (7 feature tests + 7 JS unit tests). |
 | **B-13 A** | Penyimpanan pengajuan surat sebagai draf | **Belum dikerjakan** | Status 'Draf' di DB, isolasi dari antrean TU, validasi wajib template. |
 | **B-13 B** | Pembukaan dan pengubahan draf surat milik pengusul | **Selesai** | Halaman edit draf populate isian lama (termasuk template dengan form khusus), aksi kirim pengajuan ubah status jadi `menunggu`, proteksi 403 IDOR. 14 test lolos. |
-| **B-14** | Penghapusan permanen draf pengajuan surat | **Belum dikerjakan** | Fitur hapus draf mandiri oleh pengusul. |
-| **B-19** | Pengurutan antrean surat secara FIFO di dasbor TU | **Belum dikerjakan** | Antrean urut kronologis pengajuan masuk. |
-| **B-20** | Verifikasi surat oleh Admin TU beserta catatan revisi | **Belum dikerjakan** | Alur verifikasi surat dan feedback catatan revisi. |
-| **B-27** | Daftar riwayat seluruh pengajuan surat di akun pengusul | **Belum dikerjakan** | Tabel riwayat pengajuan personal pengusul. |
-| **B-28** | Pratinjau (preview) dokumen surat dari daftar riwayat | **Belum dikerjakan** | Modal / tab pratinjau dokumen surat PDF. |
+| **B-14** | Penghapusan permanen draf pengajuan surat | **Selesai** | Modal konfirmasi focus trap & Escape (`modalHapusDraf`), endpoint `DELETE /surat/{id}/draf`, tombol hapus nonaktif pada surat diajukan, penolakan 422 non-draf. |
+| **B-19** | Pengurutan antrean surat secara FIFO di dasbor TU | **Selesai** | Default query `ORDER BY created_at ASC, id ASC`, kolom `Waktu Masuk` (`DD/MM/YYYY HH:mm`), indikator `Prioritas FIFO`, isolasi draf & surat selesai. |
+| **B-20** | Verifikasi surat oleh Admin TU beserta catatan revisi | **Selesai** | Endpoint `POST /admin/surat/{id}/verifikasi` (`Diverifikasi TU`) dan `POST /admin/surat/{id}/revisi` (`Perlu Revisi`), modal catatan revisi wajib isi. |
+| **B-27** | Daftar riwayat seluruh pengajuan surat di akun pengusul | **Selesai** | Tabel responsif & kartu mobile riwayat pengusul (`Nomor Surat`, `Tanggal`, `Status`), badge kontras >= 4.5:1, empty state jelas, `/riwayat-surat` & `/api/riwayat-surat`. |
+| **B-28** | Pratinjau (preview) dokumen surat dari daftar riwayat | **Selesai** | Endpoint `GET /surat/{id}/pratinjau`, modal Escape-closable (>= 14px, kontras 21:1), loading/error state, halaman 404 aman, & update README. |
 
 ---
 
@@ -157,13 +157,13 @@
 ---
 
 ### 6. [B-10 B] Pengisian daftar anggota dan peran dalam kegiatan
-* **Status:** Belum dikerjakan (Product Backlog Sprint 2)
+* **Status:** Selesai (100% - Siap dipindahkan ke Review/Done)
 * **PIC:** Yuga Pratama (Backend), Josua Rajak (Frontend), Arman Dava (QA)
 * **Checklist:**
-  - [ ] 1. Rancang antarmuka tabel dinamis tambah/hapus anggota kegiatan (UI/UX)
-  - [ ] 2. Tabel relasi personel surat dan endpoint simpan bulk anggota (Backend)
-  - [ ] 3. Komponen dynamic input row anggota di form pengajuan (Front-end)
-  - [ ] 4. Uji validasi baris anggota kosong dan keteroperasian keyboard (Pengujian)
+  - [x] 1. Rancang antarmuka tabel dinamis tambah/hapus anggota kegiatan (UI/UX) (`resources/views/components/personel-list.blade.php`, `public/css/personel-list.css`)
+  - [x] 2. Tabel relasi personel surat dan endpoint simpan bulk anggota (Backend) (`database/migrations/2026_11_25_000001_create_surat_personel_table.php`, `app/Models/SuratPersonel.php`, `app/Support/SuratPersonelSync.php`, `routes/web.php`)
+  - [x] 3. Komponen dynamic input row anggota di form pengajuan (Front-end) (`public/js/personel-list.js`, `resources/views/surat/form-dinamis.blade.php`, `resources/views/surat/edit-draf.blade.php`, `resources/views/dosen/surat/form/surat-tugas-kegiatan-kuliah.blade.php`)
+  - [x] 4. Uji validasi baris anggota kosong dan keteroperasian keyboard (Pengujian) (`tests/Feature/PersonelKegiatanB10BTest.php`, `tests/js/personel-list.test.mjs`)
 
 ---
 
@@ -211,18 +211,50 @@
 ---
 
 ### 9. [B-14] Penghapusan permanen draf pengajuan surat
-* **Status:** Belum dikerjakan (Product Backlog Sprint 2)
-* **Checklist:** Menunggu perumusan checklist detail.
+* **Status:** Selesai (100%)
+* **Checklist:**
+  - [x] 1. Modal dialog konfirmasi hapus draf dengan focus trap (`resources/views/components/modal-hapus-draf.blade.php`, `public/js/sakti-modal.js`)
+  - [x] 2. Endpoint DELETE draf dengan validasi status wajib 'Draf' (`routes/web.php`)
+  - [x] 3. Integrasi tombol hapus draf di UI dan uji penolakan surat 'Diajukan' (`tests/Feature/HapusDrafB14Test.php`, `tests/js/sakti-modal.test.mjs`)
 
 ---
 
-### 10. [B-19, B-20, B-27, B-28] Fitur Antrean & Riwayat Pengajuan
-* **Status:** Belum dikerjakan (Product Backlog Sprint 2)
-* **Cakupan:**
-  - **B-19:** Pengurutan antrean surat secara FIFO di dasbor TU.
-  - **B-20:** Verifikasi surat oleh Admin TU beserta catatan revisi.
-  - **B-27:** Daftar riwayat seluruh pengajuan surat di akun pengusul.
-  - **B-28:** Pratinjau (*preview*) dokumen surat dari daftar riwayat.
+### 10. [B-19] Pengurutan antrean surat secara FIFO di dasbor TU
+* **Status:** Selesai (100%)
+* **Checklist:**
+  - [x] 1. Modifikasi query antrean TU: `ORDER BY created_at ASC` (FIFO) (`app/Models/SuratPengajuan.php`, `routes/web.php`)
+  - [x] 2. Tampilkan indikator waktu submit (`DD/MM/YYYY HH:mm`) dan tanda prioritas FIFO pada tabel TU (`resources/views/admin/partials/antrean-fifo-table.blade.php`)
+  - [x] 3. Uji urutan antrean FIFO saat pengajuan masuk berurutan (`tests/Feature/AntreanFifoTuB19Test.php`)
+
+---
+
+### 11. [B-20] Verifikasi surat oleh Admin TU beserta catatan revisi
+* **Status:** Selesai (100%)
+* **Checklist:**
+  - [x] 1. Desain modal catatan revisi dan tombol aksi verifikasi TU (`resources/views/components/modal-revisi-tu.blade.php`)
+  - [x] 2. Endpoint persetujuan verifikasi surat oleh Admin TU (`POST /admin/surat/{id}/verifikasi`)
+  - [x] 3. Endpoint pengembalian surat dengan validasi wajib catatan revisi (`POST /admin/surat/{id}/revisi`)
+  - [x] 4. Form interaksi verifikasi dan modal revisi di dasbor TU (`resources/views/admin/partials/antrean-fifo-table.blade.php`, `resources/views/surat/detail.blade.php`)
+  - [x] 5. Uji alur verifikasi lolos, pengembalian revisi, dan validasi revisi kosong (`tests/Feature/VerifikasiRevisiTuB20Test.php`)
+
+---
+
+### 12. [B-27] Daftar riwayat seluruh pengajuan surat di akun pengusul
+* **Status:** Selesai (100%)
+* **Checklist:**
+  - [x] 1. Desain tabel responsif riwayat pengajuan dengan badge kontras tinggi (`public/css/sakti-ui.css`, `app/Helpers/StatusHelper.php`)
+  - [x] 2. Endpoint daftar riwayat pengajuan khusus akun yang login (`/riwayat-surat`, `/api/riwayat-surat`, `/mahasiswa/surat`, `/dosen/surat`)
+  - [x] 3. Bangun halaman riwayat pengajuan pengusul dengan empty state (`resources/views/surat/partials/riwayat-pengusul.blade.php`)
+  - [x] 4. Uji tampilan riwayat pengusul dan cek kontras warna teks badge status (`tests/Feature/RiwayatPengusulB27Test.php`)
+
+---
+
+### 13. [B-28] Pratinjau (preview) dokumen surat dari daftar riwayat
+* **Status:** Selesai (100%)
+* **Checklist:**
+  - [x] 1. Desain modal pratinjau surat resmi dengan rasio tipografi standar (`resources/views/components/modal-pratinjau-surat.blade.php`, `public/css/sakti-ui.css`)
+  - [x] 2. Endpoint render data surat ke tampilan pratinjau HTML terformat (`GET /surat/{id}/pratinjau`, `app/Support/SuratPreview.php`, `resources/views/preview/_generic.blade.php`)
+  - [x] 3. Uji pratinjau surat, review integrasi akhir Sprint 2, & update README (`tests/Feature/PratinjauSuratB28Test.php`, `README.md`)
 
 ---
 

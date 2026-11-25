@@ -1,0 +1,108 @@
+/**
+ * Gaya visual komponen daftar anggota kegiatan (B-10 B).
+ *
+ * Konsisten dengan palet SAKTI (teks gelap #111827, aksen oranye #c2410c,
+ * status error merah #b91c1c), target sentuh minimal 44x44px, serta reflow
+ * responsif dari kartu bertumpuk di mobile hingga baris terstruktur di desktop.
+ */
+
+.sakti-personel-section {
+    background-color: #f9fafb;
+    border: 1px solid #6b7280;
+    border-radius: 0.75rem;
+    padding: 1rem;
+}
+
+@media (min-width: 768px) {
+    .sakti-personel-section {
+        padding: 1.25rem;
+    }
+}
+
+.sakti-personel-btn-add,
+.sakti-personel-btn-remove {
+    min-width: 44px;
+    min-height: 44px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.sakti-personel-btn-add {
+    background-color: #c2410c;
+    color: #ffffff;
+    border: 1px solid #9a3412;
+}
+
+.sakti-personel-btn-add:hover {
+    background-color: #9a3412;
+}
+
+.sakti-personel-btn-add:active {
+    background-color: #7c2d12;
+}
+
+.sakti-personel-btn-add:focus-visible {
+    outline: 3px solid #c2410c;
+    outline-offset: 2px;
+}
+
+.sakti-personel-btn-remove {
+    background-color: #ffffff;
+    color: #b91c1c;
+    border: 1px solid #b91c1c;
+}
+
+.sakti-personel-btn-remove:hover:not(:disabled) {
+    background-color: #fef2f2;
+    color: #991b1b;
+}
+
+.sakti-personel-btn-remove:active:not(:disabled) {
+    background-color: #fee2e2;
+}
+
+.sakti-personel-btn-remove:focus-visible {
+    outline: 3px solid #b91c1c;
+    outline-offset: 2px;
+}
+
+.sakti-personel-btn-remove:disabled,
+.sakti-personel-btn-add:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.sakti-personel-input {
+    min-height: 44px;
+    border: 1px solid #6b7280;
+    color: #111827;
+    background-color: #ffffff;
+}
+
+.sakti-personel-input:focus-visible {
+    outline: 3px solid #c2410c;
+    outline-offset: 1px;
+    border-color: #c2410c;
+}
+
+.sakti-personel-input[aria-invalid="true"] {
+    border-color: #b91c1c;
+    background-color: #fef2f2;
+}
+
+.sakti-personel-input[aria-invalid="true"]:focus-visible {
+    outline: 3px solid #b91c1c;
+}
+
+.sakti-personel-row {
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sakti-personel-btn-add,
+    .sakti-personel-btn-remove {
+        transition: none;
+    }
+}
