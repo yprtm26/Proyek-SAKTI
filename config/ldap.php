@@ -29,11 +29,11 @@ return [
     'connections' => [
 
         'default' => [
-            'hosts' => [env('LDAP_HOST', 'pdc.yarsi.ac.id')],
+            'hosts' => array_values(array_filter([(string) env('LDAP_HOST', '')])),
             'username' => env('LDAP_USERNAME', null),
             'password' => env('LDAP_PASSWORD', null),
             'port' => env('LDAP_PORT', 389),
-            'base_dn' => env('LDAP_BASE_DN', 'dc=yarsi,dc=ac,dc=id'),
+            'base_dn' => env('LDAP_BASE_DN', ''),
             'timeout' => env('LDAP_TIMEOUT', 5),
             'use_ssl' => env('LDAP_SSL', false),
             'use_tls' => env('LDAP_TLS', false),
