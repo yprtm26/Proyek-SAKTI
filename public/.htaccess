@@ -1,9 +1,27 @@
+# Tolak akses langsung ke dotfile (.env, .git, .htaccess) serta file log/cadangan
+<FilesMatch "(^\.|^artisan$|^composer\.(json|lock)$|^package(-lock)?\.json$|\.(log|sql|sqlite|sqlite3|db|bak|backup|old|orig|save|swp|swo|dist|ini|conf|env|key|pem|crt|zip|tar|gz|7z|rar)$)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
     </IfModule>
 
     RewriteEngine On
+
+    # Blokir direktori & file tersembunyi (seperti /.env dan /.git/config) kecuali /.well-known
+    RewriteCond %{REQUEST_URI} !(^|/)\.well-known(/|$) [NC]
+    RewriteRule (^|/)\. - [F,L]
+
+    # Blokir file log, database, dan berkas cadangan
+    RewriteRule \.(log|sql|sqlite|sqlite3|db|bak|backup|old|orig|save|swp|swo|dist|ini|conf|env|key|pem|crt|zip|tar|gz|7z|rar)$ - [F,L,NC]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .

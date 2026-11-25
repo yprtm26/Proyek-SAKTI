@@ -1,8 +1,12 @@
 *.log
+*.bak
+*.sql
 .DS_Store
 .env
 .env.backup
+.env.local
 .env.production
+.env.staging
 .phpactor.json
 .phpunit.result.cache
 serve.bat

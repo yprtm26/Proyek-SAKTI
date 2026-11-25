@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\BlockSensitiveFiles;
+use App\Http\Middleware\SecurityHeaders;
 use App\Providers\ViewServiceProvider;
 use App\Services\SecurityAuditLogger;
 use App\Support\SensitiveDataSanitizer;
@@ -8,6 +10,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -19,6 +22,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function ($middleware) {
+        $middleware->prepend([
+            SecurityHeaders::class,
+            BlockSensitiveFiles::class,
+        ]);
+
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
@@ -117,5 +125,9 @@ return Application::configure(basePath: dirname(__DIR__))
                 'Terjadi kendala teknis. Laporkan ID kejadian: '.$incidentId,
                 500
             );
+        });
+
+        $exceptions->respond(function (Response $response): Response {
+            return SecurityHeaders::apply($response);
         });
     })->create();
